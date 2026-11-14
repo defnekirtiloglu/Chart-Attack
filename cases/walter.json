@@ -1,0 +1,77 @@
+{
+  "id": "walter",
+  "title": "Walter: short of breath, again",
+  "disclaimer": "Fictional teaching case written for HackPrinceton 2026. Not medical advice.",
+  "patient": {
+    "name": "Walter Brennan",
+    "age": 72,
+    "sex": "male",
+    "language": "English",
+    "persona": "Retired union machinist from Trenton. Grumpy, quick, funny, and allergic to being lectured. Calls doctors 'kid'. Deflects with jokes when embarrassed, especially about not following instructions. Loves his Tuesday and Thursday bowling league and will talk shop about lathes if you let him. Softens when someone treats him like an adult instead of a problem. Never names diagnoses or medical terms himself; he describes how things feel."
+  },
+  "caregiver": {
+    "name": "Ayşe Brennan",
+    "relation": "wife",
+    "age": 68,
+    "language": "Turkish",
+    "persona": "Walter's wife of 41 years, born in İzmir. Reads very little English and is too polite to say when she doesn't understand. She fills Walter's weekly pill box and does all the cooking. Warm, worried, a little tired of Walter's jokes. Speaks only Turkish. When asked to repeat the plan back she says only what she actually understood, and admits plainly what she did not."
+  },
+  "facts": [
+    {"id": "breathless", "label": "5 days of worsening breathlessness; now sleeps in his recliner", "tier": "volunteered", "critical": false,
+     "says": "Can't catch my breath for about five days. I've been sleeping in the recliner because lying flat feels like drowning."},
+    {"id": "swelling", "label": "Both ankles swollen; shoes don't fit", "tier": "asked", "critical": false,
+     "says": "My ankles look like somebody inflated them. Can't get my work boots on."},
+    {"id": "cough", "label": "Wet cough with yellow phlegm, felt feverish 2 days", "tier": "asked", "critical": false,
+     "says": "Coughing up yellow junk. Felt hot and cold the last couple days."},
+    {"id": "skips_diuretic", "label": "Skips his water pill (furosemide) on bowling days, Tue and Thu", "tier": "reluctant", "critical": true,
+     "says": "Fine. I skip the water pill on bowling days. You try rolling a 200 game running to the john every ten minutes."},
+    {"id": "ibuprofen", "label": "Takes ibuprofen most days for a bad right knee", "tier": "asked", "critical": true,
+     "says": "Couple of those orange ibuprofens most days for the knee. Bad knee from forty years on a concrete shop floor."},
+    {"id": "salt", "label": "High-salt diet: canned soup and deli meat at the bowling alley; Ayşe cooks low salt at home", "tier": "reluctant", "critical": true,
+     "says": "Ayşe cooks healthy, I'll give her that. But at the lanes it's a ham sandwich and a can of soup. Don't tell her."},
+    {"id": "wife_pills", "label": "Wife Ayşe fills his pill box; she reads little English and speaks Turkish", "tier": "asked", "critical": true,
+     "says": "Ayşe does the pill box every Sunday. Her English reading isn't great, so she goes by the color of the pills mostly."},
+    {"id": "no_scale", "label": "Does not weigh himself; no scale at home", "tier": "asked", "critical": false,
+     "says": "A scale? Haven't owned one since the Carter administration."},
+    {"id": "spo2", "label": "SpO2 84% on room air on arrival", "tier": "chart", "critical": false},
+    {"id": "cxr", "label": "Chest X-ray: vascular congestion and right lower lobe infiltrate", "tier": "chart", "critical": false},
+    {"id": "ef", "label": "Echo: EF about 30%, down from 40% last year", "tier": "chart", "critical": false},
+    {"id": "creatinine", "label": "Creatinine 1.6 mg/dL (baseline 1.2)", "tier": "chart", "critical": false}
+  ],
+  "encounters": [
+    {"id": "ed", "title": "Emergency department", "student_role": "ED resident",
+     "goal": "Interview Walter. Find out why he is back and what is going on at home.",
+     "speaker": "patient"},
+    {"id": "handoff", "title": "Handoff to cardiology", "student_role": "ED resident",
+     "goal": "Write an SBAR handoff to Dr. Lena Okafor, cardiology. She will only know what you tell her.",
+     "speaker": "cardiologist"},
+    {"id": "discharge", "title": "Discharge teaching", "student_role": "Inpatient resident",
+     "goal": "Explain the discharge plan to Ayşe through the interpreter, then ask her to say it back.",
+     "speaker": "caregiver"}
+  ],
+  "cardiologist": {
+    "name": "Dr. Lena Okafor",
+    "persona": "Cardiology attending. Brisk, kind, teaches by asking one sharp question. Works only from the handoff she was given."
+  },
+  "plan": {
+    "base": [
+      {"id": "weigh_daily", "point": "Weigh every morning after the bathroom, before breakfast, and write it down. Call if up 2 lb in a day or 5 lb in a week."},
+      {"id": "fluid_limit", "point": "Keep all drinks to about 6 cups (1.5 liters) a day, including soup and coffee."},
+      {"id": "antibiotic", "point": "Finish the antibiotic pills for the lung infection, even if he feels better."},
+      {"id": "warning_signs", "point": "Call or come back if breathing gets worse, he can't lie flat, or his legs swell more."},
+      {"id": "follow_up", "point": "See the heart clinic within 7 days."}
+    ],
+    "conditional": [
+      {"id": "diuretic_every_day", "needs": "skips_diuretic", "point": "Take the water pill every single morning, including bowling days. It can be taken after bowling instead of before if needed."},
+      {"id": "stop_ibuprofen", "needs": "ibuprofen", "point": "Stop ibuprofen and similar pain pills. Use acetaminophen (Tylenol) for the knee instead."},
+      {"id": "low_salt_out", "needs": "salt", "point": "Skip canned soup and deli meat, including at the bowling alley."},
+      {"id": "turkish_pillbox", "needs": "wife_pills", "point": "Ayşe gets a Turkish-language medicine list and a pill box chart by name, not by color."}
+    ],
+    "missed_consequence": {
+      "skips_diuretic": "Plan assumes he takes his water pill daily. The real reason he keeps coming back is never fixed.",
+      "ibuprofen": "Ibuprofen keeps hurting his kidneys and holding fluid. Nobody tells him to stop.",
+      "salt": "Diet teaching covers home cooking only. The bowling-alley soup continues.",
+      "wife_pills": "Discharge papers go home in English to the person who can't read them."
+    }
+  }
+}
