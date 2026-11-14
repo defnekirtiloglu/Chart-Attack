@@ -1,0 +1,370 @@
+"""OSCEnario Rounds engine: one patient, three encounters, one shared record.
+
+Design rule: the model answers, code decides.
+  - Gemini maps the student's words to fact ids and writes the in-character replies.
+  - Plain code decides what Walter may reveal, what the cardiologist knows,
+    what goes in the plan, and what Ayşe understood.
+"""
+import json
+import re
+import uuid
+from pathlib import Path
+from typing import Dict, List, Optional
+
+from . import llm
+
+CASES = Path(__file__).resolve().parents[1] / "cases"
+STAGES = ["ed", "handoff", "discharge", "done"]
+
+# Keyword fallback for when Gemini is down. Lower-case substrings.
+KEYWORDS = {
+    "breathless": ["breath", "breathing", "brought you", "what's going on", "what brings", "how are you", "sleep"],
+    "swelling": ["swell", "ankle", "leg", "feet", "foot", "shoes"],
+    "cough": ["cough", "fever", "phlegm", "sputum", "chills", "sick"],
+    "skips_diuretic": ["water pill", "furosemide", "lasix", "diuretic", "miss", "skip", "every day", "take your med", "medications", "pills"],
+    "ibuprofen": ["pain", "ibuprofen", "advil", "motrin", "knee", "over the counter", "other med", "anything else you take"],
+    "salt": ["eat", "diet", "salt", "food", "meal", "soup", "lunch"],
+    "wife_pills": ["who helps", "who manages", "pill box", "pillbox", "home", "live with", "wife", "family", "who gives"],
+    "no_scale": ["weigh", "weight", "scale"],
+}
+EMPATHY = ["no judgment", "not judging", "a lot of people", "lots of people", "makes sense", "understand",
+           "that sounds", "must be", "it's okay", "it's ok", "honest", "between us", "hard to"]
+
+
+def load_case(case_id: str) -> dict:
+    path = CASES / f"{case_id}.json"
+    if not path.exists():
+        raise KeyError(case_id)
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+class Session:
+    def __init__(self, case: dict):
+        self.id = uuid.uuid4().hex[:10]
+        self.case = case
+        self.stage = "ed"
+        self.turn = 0
+        self.transcript: List[dict] = []
+        self.discovered: Dict[str, dict] = {}   # fact id -> {encounter, turn, how}
+        self.asks: Dict[str, int] = {}          # fact id -> times the student went after it
+        self.handoff: Optional[dict] = None
+        self.plan: List[dict] = []
+        self.points: Dict[str, dict] = {}       # plan point id -> {covered, clear, jargon}
+        self.teachback: Optional[dict] = None
+        for f in case["facts"]:                 # vitals, labs and imaging are on the chart from the start
+            if f["tier"] == "chart":
+                self.discovered[f["id"]] = {"encounter": "ed", "turn": 0, "how": "chart"}
+
+    # ---------- helpers ----------
+    def fact(self, fid: str) -> dict:
+        return next(f for f in self.case["facts"] if f["id"] == fid)
+
+    def log(self, speaker: str, text: str, **extra):
+        self.transcript.append({"encounter": self.stage, "turn": self.turn, "speaker": speaker, "text": text, **extra})
+
+    def chart(self) -> List[dict]:
+        out = []
+        for f in self.case["facts"]:
+            d = self.discovered.get(f["id"])
+            if d:
+                out.append({"id": f["id"], "label": f["label"], "critical": f["critical"], **d})
+        return out
+
+    def state(self) -> dict:
+        enc = {e["id"]: e for e in self.case["encounters"]}
+        return {
+            "session_id": self.id,
+            "case": {"id": self.case["id"], "title": self.case["title"], "disclaimer": self.case["disclaimer"],
+                     "patient": {k: self.case["patient"][k] for k in ("name", "age", "sex", "language")},
+                     "caregiver": {k: self.case["caregiver"][k] for k in ("name", "relation", "language")}},
+            "stage": self.stage,
+            "encounter": enc.get(self.stage),
+            "encounters": self.case["encounters"],
+            "chart": self.chart(),
+            "hidden_count": sum(1 for f in self.case["facts"] if f["id"] not in self.discovered),
+            "handoff": self.handoff,
+            "plan": self.plan,
+            "transcript": self.transcript,
+        }
+
+
+SESSIONS: Dict[str, Session] = {}
+
+
+def start(case_id: str = "walter") -> Session:
+    s = Session(load_case(case_id))
+    SESSIONS[s.id] = s
+    return s
+
+
+def get(sid: str) -> Session:
+    if sid not in SESSIONS:
+        raise KeyError(sid)
+    return SESSIONS[sid]
+
+
+# ======================= ED: interview Walter =======================
+def route(s: Session, text: str) -> dict:
+    """Which facts is the student going after, and were they non-judgmental?"""
+    askable = [f for f in s.case["facts"] if f["tier"] != "chart"]
+    menu = "\n".join(f'- {f["id"]}: {f["label"]}' for f in askable)
+    out = llm.ask_json(
+        "A medical student is interviewing a patient. Decide which topics the student's message is asking about.\n"
+        f"Topics:\n{menu}\n\nStudent said: \"{text}\"\n\n"
+        "Return JSON {\"fact_ids\": [ids the message directly asks about], "
+        "\"empathetic\": true if the tone is warm and non-judgmental, e.g. normalizing or reassuring}. "
+        "A broad opener like 'what brings you in' only matches breathless. Use only ids from the list.")
+    ids = set()
+    empathetic = False
+    if isinstance(out, dict):
+        ids = {i for i in out.get("fact_ids", []) if i in {f["id"] for f in askable}}
+        empathetic = bool(out.get("empathetic"))
+    low = text.lower()
+    if out is None:
+        ids = {fid for fid, kws in KEYWORDS.items() if any(k in low for k in kws)}
+    empathetic = empathetic or any(k in low for k in EMPATHY)
+    return {"fact_ids": sorted(ids), "empathetic": empathetic}
+
+
+def disclose(s: Session, routed: dict) -> dict:
+    """Plain code decides what Walter will say this turn."""
+    new, deflected = [], []
+    for f in s.case["facts"]:
+        fid = f["id"]
+        if fid in s.discovered or f["tier"] == "chart":
+            continue
+        targeted = fid in routed["fact_ids"]
+        if targeted:
+            s.asks[fid] = s.asks.get(fid, 0) + 1
+        if f["tier"] == "volunteered" and (targeted or s.turn == 1):
+            new.append(fid)
+        elif f["tier"] == "asked" and targeted:
+            new.append(fid)
+        elif f["tier"] == "reluctant" and targeted:
+            if routed["empathetic"] or s.asks[fid] >= 2:
+                new.append(fid)
+            else:
+                deflected.append(fid)
+    for fid in new:
+        s.discovered[fid] = {"encounter": "ed", "turn": s.turn, "how": "interview"}
+    return {"new": new, "deflected": deflected}
+
+
+def walter_reply(s: Session, text: str, d: dict) -> str:
+    p = s.case["patient"]
+    share = [s.fact(fid)["says"] for fid in d["new"]]
+    dodge = [s.fact(fid)["label"] for fid in d["deflected"]]
+    history = "\n".join(f'{t["speaker"]}: {t["text"]}' for t in s.transcript[-8:] if t["encounter"] == "ed")
+    prompt = (
+        f"You are {p['name']}, {p['age']}, a patient in the emergency department. {p['persona']}\n\n"
+        f"Recent conversation:\n{history}\n\nThe student just said: \"{text}\"\n\n"
+        "Reply in character in 1-3 short spoken sentences.\n"
+        + (f"Work in these facts, in your own voice (you may paraphrase): {share}\n" if share else "")
+        + (f"The student is poking at something you're embarrassed about ({dodge}). Dodge it with a joke and don't admit it.\n" if dodge else "")
+        + "Do NOT reveal any other medical history, symptoms or habits beyond what is listed. "
+          "If asked something not covered, say you don't know or change the subject with attitude. "
+          "Never use medical terms or name a diagnosis.")
+    out = llm.ask_text(prompt)
+    if out:
+        return out
+    if share:
+        return " ".join(share)
+    if dodge:
+        return "Ha. Next question, kid."
+    return "I dunno, kid. Ask me something useful."
+
+
+def ed_chat(s: Session, text: str) -> dict:
+    if s.stage != "ed":
+        raise ValueError("The ED interview is over.")
+    s.turn += 1
+    s.log("student", text)
+    routed = route(s, text)
+    d = disclose(s, routed)
+    reply = walter_reply(s, text, d)
+    s.log("patient", reply)
+    return {"speaker": s.case["patient"]["name"], "reply": reply,
+            "new_facts": [{"id": f, "label": s.fact(f)["label"], "critical": s.fact(f)["critical"]} for f in d["new"]],
+            "dodged": len(d["deflected"]) > 0, "hidden_count": s.state()["hidden_count"]}
+
+
+# ======================= Handoff to cardiology =======================
+def facts_in_text(s: Session, text: str, candidates: List[dict]) -> List[str]:
+    menu = "\n".join(f'- {f["id"]}: {f["label"]}' for f in candidates)
+    out = llm.ask_json(
+        "Here is a clinical handoff note and a list of facts. Which facts does the note clearly convey? "
+        "Paraphrase counts; vague hints do not.\n"
+        f"Facts:\n{menu}\n\nNote:\n\"\"\"{text}\"\"\"\n\nReturn JSON {{\"fact_ids\": [...]}}.")
+    ok = {f["id"] for f in candidates}
+    if isinstance(out, dict):
+        return [i for i in out.get("fact_ids", []) if i in ok]
+    low = text.lower()
+    hits = []
+    for f in candidates:
+        kws = KEYWORDS.get(f["id"], []) + [w for w in re.findall(r"[a-z]{5,}", f["label"].lower())][:4]
+        if any(k in low for k in kws):
+            hits.append(f["id"])
+    return hits
+
+
+def build_plan(case: dict, handed: List[str]) -> List[dict]:
+    plan = [dict(p, source="standard") for p in case["plan"]["base"]]
+    for p in case["plan"]["conditional"]:
+        if p["needs"] in handed:
+            plan.append(dict(p, source=p["needs"]))
+    return plan
+
+
+def do_handoff(s: Session, text: str) -> dict:
+    if s.stage == "ed":
+        s.stage = "handoff"
+    if s.stage != "handoff":
+        raise ValueError("Handoff already done.")
+    s.turn += 1
+    s.log("student", text)
+    known = [s.fact(fid) for fid in s.discovered]
+    handed = facts_in_text(s, text, known)
+    critical = [f for f in s.case["facts"] if f["critical"]]
+    missing = []
+    for f in critical:
+        if f["id"] in handed:
+            continue
+        found = f["id"] in s.discovered
+        missing.append({"id": f["id"], "label": f["label"],
+                        "why": "found in the ED but left out of the handoff" if found else "never found in the ED",
+                        "consequence": s.case["plan"]["missed_consequence"].get(f["id"])})
+    s.plan = build_plan(s.case, handed)
+    c = s.case["cardiologist"]
+    reply = llm.ask_text(
+        f"You are {c['name']}. {c['persona']}\n"
+        f"You just got this SBAR handoff from an ED resident:\n\"\"\"{text}\"\"\"\n\n"
+        f"Your plan (say it briefly, in this order, as a cardiologist talking to a resident): {[p['point'] for p in s.plan]}\n"
+        "Then ask ONE sharp teaching question about something the handoff left vague. "
+        "You know ONLY what is in the handoff. Do not mention any patient detail that is not in it. 4-6 sentences.", 0.5)
+    if not reply:
+        reply = ("Thanks. Here's my plan: " + " ".join(p["point"] for p in s.plan)
+                 + " One question: why do you think he keeps coming back?")
+    s.handoff = {"text": text, "handed_off": handed, "missing_critical": missing, "reply": reply}
+    s.log("cardiologist", reply)
+    s.stage = "discharge"
+    return {"speaker": c["name"], "reply": reply, "handed_off": handed, "missing_critical": missing, "plan": s.plan}
+
+
+# ======================= Discharge teaching with Ayşe =======================
+def judge_points(s: Session, text: str) -> Dict[str, dict]:
+    menu = "\n".join(f'- {p["id"]}: {p["point"]}' for p in s.plan)
+    out = llm.ask_json(
+        "A doctor is explaining discharge instructions to a caregiver with low health literacy (through an interpreter).\n"
+        f"Plan points:\n{menu}\n\nDoctor said: \"{text}\"\n\n"
+        "For each point the doctor's message actually covers, return whether it was specific enough to act on, "
+        "and list any unexplained medical jargon (e.g. 'diuretic', 'sodium', 'edema', 'NSAID', 'HFrEF'). "
+        "Return JSON {\"points\": [{\"id\": str, \"specific\": bool, \"jargon\": [str]}]}. Omit points not covered.")
+    res = {}
+    if isinstance(out, dict):
+        for p in out.get("points", []):
+            if p.get("id") in {x["id"] for x in s.plan}:
+                res[p["id"]] = {"specific": bool(p.get("specific")), "jargon": [str(j) for j in p.get("jargon", [])]}
+        return res
+    low = text.lower()   # fallback: word overlap
+    for p in s.plan:
+        words = [w for w in re.findall(r"[a-z]{4,}", p["point"].lower())]
+        if sum(w in low for w in set(words)) >= 3:
+            jar = [j for j in ["diuretic", "sodium", "edema", "nsaid", "hfref", "ejection", "furosemide"] if j in low]
+            res[p["id"]] = {"specific": True, "jargon": jar}
+    return res
+
+
+def interpret(text: str) -> str:
+    out = llm.ask_text("Translate into natural, everyday Turkish as a medical interpreter would say it aloud. "
+                       "Keep any medical jargon as-is (do not explain it). Output only the Turkish.\n\n" + text, 0.2)
+    return out or f"[Türkçe çeviri] {text}"
+
+
+def discharge_chat(s: Session, text: str) -> dict:
+    if s.stage != "discharge":
+        raise ValueError("Finish the handoff first.")
+    s.turn += 1
+    tr = interpret(text)
+    s.log("student", text, text_tr=tr)
+    judged = judge_points(s, text)
+    for pid, j in judged.items():
+        prev = s.points.get(pid, {"covered": False, "clear": False, "jargon": []})
+        clear = j["specific"] and not j["jargon"]
+        s.points[pid] = {"covered": True, "clear": prev["clear"] or clear,
+                         "jargon": [] if (prev["clear"] or clear) else sorted(set(prev["jargon"] + j["jargon"]))}
+    confusing = sorted({w for pid in judged for w in s.points[pid]["jargon"]})
+    cg = s.case["caregiver"]
+    out = llm.ask_json(
+        f"You are {cg['name']}, {cg['age']}, Walter's wife. {cg['persona']}\n"
+        f"The interpreter just told you (in Turkish): \"{tr}\"\n"
+        + (f"These words were not explained and you don't know them: {confusing}. Politely ask what they mean.\n" if confusing else "")
+        + "Reply in 1-2 short sentences of Turkish, as you would speak. "
+          "Return JSON {\"tr\": Turkish reply, \"en\": English translation}.", 0.7)
+    if not isinstance(out, dict):
+        out = {"tr": "Anladım, teşekkür ederim." if not confusing else f"Affedersiniz, '{confusing[0]}' ne demek?",
+               "en": "I understand, thank you." if not confusing else f"Excuse me, what does '{confusing[0]}' mean?"}
+    s.log("caregiver", out.get("tr", ""), text_en=out.get("en", ""))
+    return {"speaker": cg["name"], "interpreted_tr": tr, "reply_tr": out.get("tr", ""), "reply_en": out.get("en", ""),
+            "points": progress(s)}
+
+
+def progress(s: Session) -> List[dict]:
+    return [{"id": p["id"], "point": p["point"], **s.points.get(p["id"], {"covered": False, "clear": False, "jargon": []})}
+            for p in s.plan]
+
+
+def do_teachback(s: Session) -> dict:
+    if s.stage != "discharge":
+        raise ValueError("Teach-back happens at discharge.")
+    got = [p for p in s.plan if s.points.get(p["id"], {}).get("clear")]
+    lost = [p for p in s.plan if p not in got]
+    cg = s.case["caregiver"]
+    out = llm.ask_json(
+        f"You are {cg['name']}. {cg['persona']}\nThe doctor asked you to repeat the plan back in your own words.\n"
+        f"You understood ONLY these points: {[p['point'] for p in got]}\n"
+        f"You did NOT understand or were never told: {[p['point'] for p in lost]}\n"
+        "Repeat back what you understood in simple words, then honestly say what you are unsure about, "
+        "without naming the details you never heard. 3-5 sentences of Turkish. "
+        "Return JSON {\"tr\": Turkish, \"en\": English translation}.", 0.6)
+    if not isinstance(out, dict):
+        said = " ".join(p["point"] for p in got)
+        out = {"tr": ("Anladığım kadarıyla: " + said) if got else "Açıkçası pek bir şey anlamadım.",
+               "en": ("What I understood: " + said) if got else "Honestly, I didn't really understand."}
+    s.teachback = {"understood": [p["id"] for p in got], "missed": [p["id"] for p in lost], **out}
+    s.log("caregiver", out.get("tr", ""), text_en=out.get("en", ""), teachback=True)
+    s.stage = "done"
+    return {"speaker": cg["name"], **s.teachback}
+
+
+# ======================= Feedback timeline =======================
+def feedback(s: Session) -> dict:
+    handed = set((s.handoff or {}).get("handed_off", []))
+    understood = set((s.teachback or {}).get("understood", []))
+    cond = {p["needs"]: p for p in s.case["plan"]["conditional"]}
+    threads = []
+    for f in s.case["facts"]:
+        if not f["critical"]:
+            continue
+        found = s.discovered.get(f["id"])
+        plan_pt = cond.get(f["id"])
+        steps = [
+            {"stage": "ed", "ok": bool(found), "note": f"Found on turn {found['turn']}" if found else "Never asked about"},
+            {"stage": "handoff", "ok": f["id"] in handed, "note": "In the SBAR" if f["id"] in handed else "Not handed off"},
+            {"stage": "discharge", "ok": bool(plan_pt and plan_pt["id"] in understood),
+             "note": "Ayşe understood it" if plan_pt and plan_pt["id"] in understood else "Did not make it home"},
+        ]
+        lost_at = next((st["stage"] for st in steps if not st["ok"]), None)
+        threads.append({"id": f["id"], "label": f["label"], "steps": steps, "lost_at": lost_at,
+                        "consequence": None if lost_at is None else s.case["plan"]["missed_consequence"].get(f["id"])})
+    base_ids = [p["id"] for p in s.case["plan"]["base"]]
+    return {
+        "threads": threads,
+        "carried_home": sum(t["lost_at"] is None for t in threads),
+        "total_threads": len(threads),
+        "facts_found": sum(1 for f in s.case["facts"] if f["tier"] != "chart" and f["id"] in s.discovered),
+        "facts_total": sum(1 for f in s.case["facts"] if f["tier"] != "chart"),
+        "standard_points_understood": sum(1 for i in base_ids if i in understood),
+        "standard_points_total": len(base_ids),
+        "jargon_used": sorted({w for p in s.points.values() for w in p.get("jargon", [])}),
+        "teachback": s.teachback,
+    }
