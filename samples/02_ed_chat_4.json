@@ -1,0 +1,13 @@
+{
+  "speaker": "Walter Brennan",
+  "reply": "Fine. I skip the water pill on bowling days. You try rolling a 200 game running to the john every ten minutes.",
+  "new_facts": [
+    {
+      "id": "skips_diuretic",
+      "label": "Skips his water pill (furosemide) on bowling days, Tue and Thu",
+      "critical": true
+    }
+  ],
+  "dodged": false,
+  "hidden_count": 5
+}

@@ -1,0 +1,13 @@
+{
+  "speaker": "Walter Brennan",
+  "reply": "Can't catch my breath for about five days. I've been sleeping in the recliner because lying flat feels like drowning.",
+  "new_facts": [
+    {
+      "id": "breathless",
+      "label": "5 days of worsening breathlessness; now sleeps in his recliner",
+      "critical": false
+    }
+  ],
+  "dodged": false,
+  "hidden_count": 7
+}

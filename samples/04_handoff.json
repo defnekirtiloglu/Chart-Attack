@@ -1,0 +1,63 @@
+{
+  "speaker": "Dr. Lena Okafor",
+  "reply": "Thanks. Here's my plan: Weigh every morning after the bathroom, before breakfast, and write it down. Call if up 2 lb in a day or 5 lb in a week. Keep all drinks to about 6 cups (1.5 liters) a day, including soup and coffee. Finish the antibiotic pills for the lung infection, even if he feels better. Call or come back if breathing gets worse, he can't lie flat, or his legs swell more. See the heart clinic within 7 days. Take the water pill every single morning, including bowling days. It can be taken after bowling instead of before if needed. Ayşe gets a Turkish-language medicine list and a pill box chart by name, not by color. One question: why do you think he keeps coming back?",
+  "handed_off": [
+    "breathless",
+    "swelling",
+    "skips_diuretic",
+    "wife_pills"
+  ],
+  "missing_critical": [
+    {
+      "id": "ibuprofen",
+      "label": "Takes ibuprofen most days for a bad right knee",
+      "why": "never found in the ED",
+      "consequence": "Ibuprofen keeps hurting his kidneys and holding fluid. Nobody tells him to stop."
+    },
+    {
+      "id": "salt",
+      "label": "High-salt diet: canned soup and deli meat at the bowling alley; Ayşe cooks low salt at home",
+      "why": "never found in the ED",
+      "consequence": "Diet teaching covers home cooking only. The bowling-alley soup continues."
+    }
+  ],
+  "plan": [
+    {
+      "id": "weigh_daily",
+      "point": "Weigh every morning after the bathroom, before breakfast, and write it down. Call if up 2 lb in a day or 5 lb in a week.",
+      "source": "standard"
+    },
+    {
+      "id": "fluid_limit",
+      "point": "Keep all drinks to about 6 cups (1.5 liters) a day, including soup and coffee.",
+      "source": "standard"
+    },
+    {
+      "id": "antibiotic",
+      "point": "Finish the antibiotic pills for the lung infection, even if he feels better.",
+      "source": "standard"
+    },
+    {
+      "id": "warning_signs",
+      "point": "Call or come back if breathing gets worse, he can't lie flat, or his legs swell more.",
+      "source": "standard"
+    },
+    {
+      "id": "follow_up",
+      "point": "See the heart clinic within 7 days.",
+      "source": "standard"
+    },
+    {
+      "id": "diuretic_every_day",
+      "needs": "skips_diuretic",
+      "point": "Take the water pill every single morning, including bowling days. It can be taken after bowling instead of before if needed.",
+      "source": "skips_diuretic"
+    },
+    {
+      "id": "turkish_pillbox",
+      "needs": "wife_pills",
+      "point": "Ayşe gets a Turkish-language medicine list and a pill box chart by name, not by color.",
+      "source": "wife_pills"
+    }
+  ]
+}

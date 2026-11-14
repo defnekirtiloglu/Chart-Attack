@@ -1,0 +1,118 @@
+{
+  "threads": [
+    {
+      "id": "skips_diuretic",
+      "label": "Skips his water pill (furosemide) on bowling days, Tue and Thu",
+      "steps": [
+        {
+          "stage": "ed",
+          "ok": true,
+          "note": "Found on turn 4"
+        },
+        {
+          "stage": "handoff",
+          "ok": true,
+          "note": "In the SBAR"
+        },
+        {
+          "stage": "discharge",
+          "ok": true,
+          "note": "Ayşe understood it"
+        }
+      ],
+      "lost_at": null,
+      "consequence": null
+    },
+    {
+      "id": "ibuprofen",
+      "label": "Takes ibuprofen most days for a bad right knee",
+      "steps": [
+        {
+          "stage": "ed",
+          "ok": false,
+          "note": "Never asked about"
+        },
+        {
+          "stage": "handoff",
+          "ok": false,
+          "note": "Not handed off"
+        },
+        {
+          "stage": "discharge",
+          "ok": false,
+          "note": "Did not make it home"
+        }
+      ],
+      "lost_at": "ed",
+      "consequence": "Ibuprofen keeps hurting his kidneys and holding fluid. Nobody tells him to stop."
+    },
+    {
+      "id": "salt",
+      "label": "High-salt diet: canned soup and deli meat at the bowling alley; Ayşe cooks low salt at home",
+      "steps": [
+        {
+          "stage": "ed",
+          "ok": false,
+          "note": "Never asked about"
+        },
+        {
+          "stage": "handoff",
+          "ok": false,
+          "note": "Not handed off"
+        },
+        {
+          "stage": "discharge",
+          "ok": false,
+          "note": "Did not make it home"
+        }
+      ],
+      "lost_at": "ed",
+      "consequence": "Diet teaching covers home cooking only. The bowling-alley soup continues."
+    },
+    {
+      "id": "wife_pills",
+      "label": "Wife Ayşe fills his pill box; she reads little English and speaks Turkish",
+      "steps": [
+        {
+          "stage": "ed",
+          "ok": true,
+          "note": "Found on turn 5"
+        },
+        {
+          "stage": "handoff",
+          "ok": true,
+          "note": "In the SBAR"
+        },
+        {
+          "stage": "discharge",
+          "ok": false,
+          "note": "Did not make it home"
+        }
+      ],
+      "lost_at": "discharge",
+      "consequence": "Discharge papers go home in English to the person who can't read them."
+    }
+  ],
+  "carried_home": 1,
+  "total_threads": 4,
+  "facts_found": 4,
+  "facts_total": 8,
+  "standard_points_understood": 1,
+  "standard_points_total": 5,
+  "jargon_used": [],
+  "teachback": {
+    "understood": [
+      "weigh_daily",
+      "diuretic_every_day"
+    ],
+    "missed": [
+      "fluid_limit",
+      "antibiotic",
+      "warning_signs",
+      "follow_up",
+      "turkish_pillbox"
+    ],
+    "tr": "Anladığım kadarıyla: Weigh every morning after the bathroom, before breakfast, and write it down. Call if up 2 lb in a day or 5 lb in a week. Take the water pill every single morning, including bowling days. It can be taken after bowling instead of before if needed.",
+    "en": "What I understood: Weigh every morning after the bathroom, before breakfast, and write it down. Call if up 2 lb in a day or 5 lb in a week. Take the water pill every single morning, including bowling days. It can be taken after bowling instead of before if needed."
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "session_id": "ad864739a2",
+  "case": {
+    "id": "walter",
+    "title": "Walter: short of breath, again",
+    "disclaimer": "Fictional teaching case written for HackPrinceton 2026. Not medical advice.",
+    "patient": {
+      "name": "Walter Brennan",
+      "age": 72,
+      "sex": "male",
+      "language": "English"
+    },
+    "caregiver": {
+      "name": "Ayşe Brennan",
+      "relation": "wife",
+      "language": "Turkish"
+    }
+  },
+  "stage": "ed",
+  "encounter": {
+    "id": "ed",
+    "title": "Emergency department",
+    "student_role": "ED resident",
+    "goal": "Interview Walter. Find out why he is back and what is going on at home.",
+    "speaker": "patient"
+  },
+  "encounters": [
+    {
+      "id": "ed",
+      "title": "Emergency department",
+      "student_role": "ED resident",
+      "goal": "Interview Walter. Find out why he is back and what is going on at home.",
+      "speaker": "patient"
+    },
+    {
+      "id": "handoff",
+      "title": "Handoff to cardiology",
+      "student_role": "ED resident",
+      "goal": "Write an SBAR handoff to Dr. Lena Okafor, cardiology. She will only know what you tell her.",
+      "speaker": "cardiologist"
+    },
+    {
+      "id": "discharge",
+      "title": "Discharge teaching",
+      "student_role": "Inpatient resident",
+      "goal": "Explain the discharge plan to Ayşe through the interpreter, then ask her to say it back.",
+      "speaker": "caregiver"
+    }
+  ],
+  "chart": [
+    {
+      "id": "spo2",
+      "label": "SpO2 84% on room air on arrival",
+      "critical": false,
+      "encounter": "ed",
+      "turn": 0,
+      "how": "chart"
+    },
+    {
+      "id": "cxr",
+      "label": "Chest X-ray: vascular congestion and right lower lobe infiltrate",
+      "critical": false,
+      "encounter": "ed",
+      "turn": 0,
+      "how": "chart"
+    },
+    {
+      "id": "ef",
+      "label": "Echo: EF about 30%, down from 40% last year",
+      "critical": false,
+      "encounter": "ed",
+      "turn": 0,
+      "how": "chart"
+    },
+    {
+      "id": "creatinine",
+      "label": "Creatinine 1.6 mg/dL (baseline 1.2)",
+      "critical": false,
+      "encounter": "ed",
+      "turn": 0,
+      "how": "chart"
+    }
+  ],
+  "hidden_count": 8,
+  "handoff": null,
+  "plan": [],
+  "transcript": []
+}

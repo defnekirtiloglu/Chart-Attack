@@ -1,0 +1,193 @@
+{
+  "session_id": "ad864739a2",
+  "case": {
+    "id": "walter",
+    "title": "Walter: short of breath, again",
+    "disclaimer": "Fictional teaching case written for HackPrinceton 2026. Not medical advice.",
+    "patient": {
+      "name": "Walter Brennan",
+      "age": 72,
+      "sex": "male",
+      "language": "English"
+    },
+    "caregiver": {
+      "name": "Ayşe Brennan",
+      "relation": "wife",
+      "language": "Turkish"
+    }
+  },
+  "stage": "ed",
+  "encounter": {
+    "id": "ed",
+    "title": "Emergency department",
+    "student_role": "ED resident",
+    "goal": "Interview Walter. Find out why he is back and what is going on at home.",
+    "speaker": "patient"
+  },
+  "encounters": [
+    {
+      "id": "ed",
+      "title": "Emergency department",
+      "student_role": "ED resident",
+      "goal": "Interview Walter. Find out why he is back and what is going on at home.",
+      "speaker": "patient"
+    },
+    {
+      "id": "handoff",
+      "title": "Handoff to cardiology",
+      "student_role": "ED resident",
+      "goal": "Write an SBAR handoff to Dr. Lena Okafor, cardiology. She will only know what you tell her.",
+      "speaker": "cardiologist"
+    },
+    {
+      "id": "discharge",
+      "title": "Discharge teaching",
+      "student_role": "Inpatient resident",
+      "goal": "Explain the discharge plan to Ayşe through the interpreter, then ask her to say it back.",
+      "speaker": "caregiver"
+    }
+  ],
+  "chart": [
+    {
+      "id": "breathless",
+      "label": "5 days of worsening breathlessness; now sleeps in his recliner",
+      "critical": false,
+      "encounter": "ed",
+      "turn": 1,
+      "how": "interview"
+    },
+    {
+      "id": "swelling",
+      "label": "Both ankles swollen; shoes don't fit",
+      "critical": false,
+      "encounter": "ed",
+      "turn": 2,
+      "how": "interview"
+    },
+    {
+      "id": "skips_diuretic",
+      "label": "Skips his water pill (furosemide) on bowling days, Tue and Thu",
+      "critical": true,
+      "encounter": "ed",
+      "turn": 4,
+      "how": "interview"
+    },
+    {
+      "id": "wife_pills",
+      "label": "Wife Ayşe fills his pill box; she reads little English and speaks Turkish",
+      "critical": true,
+      "encounter": "ed",
+      "turn": 5,
+      "how": "interview"
+    },
+    {
+      "id": "spo2",
+      "label": "SpO2 84% on room air on arrival",
+      "critical": false,
+      "encounter": "ed",
+      "turn": 0,
+      "how": "chart"
+    },
+    {
+      "id": "cxr",
+      "label": "Chest X-ray: vascular congestion and right lower lobe infiltrate",
+      "critical": false,
+      "encounter": "ed",
+      "turn": 0,
+      "how": "chart"
+    },
+    {
+      "id": "ef",
+      "label": "Echo: EF about 30%, down from 40% last year",
+      "critical": false,
+      "encounter": "ed",
+      "turn": 0,
+      "how": "chart"
+    },
+    {
+      "id": "creatinine",
+      "label": "Creatinine 1.6 mg/dL (baseline 1.2)",
+      "critical": false,
+      "encounter": "ed",
+      "turn": 0,
+      "how": "chart"
+    }
+  ],
+  "hidden_count": 4,
+  "handoff": null,
+  "plan": [],
+  "transcript": [
+    {
+      "encounter": "ed",
+      "turn": 1,
+      "speaker": "student",
+      "text": "Hi Mr. Brennan, what brings you in today?"
+    },
+    {
+      "encounter": "ed",
+      "turn": 1,
+      "speaker": "patient",
+      "text": "Can't catch my breath for about five days. I've been sleeping in the recliner because lying flat feels like drowning."
+    },
+    {
+      "encounter": "ed",
+      "turn": 2,
+      "speaker": "student",
+      "text": "Any swelling in your legs or ankles?"
+    },
+    {
+      "encounter": "ed",
+      "turn": 2,
+      "speaker": "patient",
+      "text": "My ankles look like somebody inflated them. Can't get my work boots on."
+    },
+    {
+      "encounter": "ed",
+      "turn": 3,
+      "speaker": "student",
+      "text": "Do you take your water pill every day?"
+    },
+    {
+      "encounter": "ed",
+      "turn": 3,
+      "speaker": "patient",
+      "text": "Ha. Next question, kid."
+    },
+    {
+      "encounter": "ed",
+      "turn": 4,
+      "speaker": "student",
+      "text": "No judgment at all, a lot of people skip it. Do you ever miss the water pill?"
+    },
+    {
+      "encounter": "ed",
+      "turn": 4,
+      "speaker": "patient",
+      "text": "Fine. I skip the water pill on bowling days. You try rolling a 200 game running to the john every ten minutes."
+    },
+    {
+      "encounter": "ed",
+      "turn": 5,
+      "speaker": "student",
+      "text": "Who helps you with your pills at home?"
+    },
+    {
+      "encounter": "ed",
+      "turn": 5,
+      "speaker": "patient",
+      "text": "Ayşe does the pill box every Sunday. Her English reading isn't great, so she goes by the color of the pills mostly."
+    },
+    {
+      "encounter": "ed",
+      "turn": 6,
+      "speaker": "student",
+      "text": "What do you usually eat?"
+    },
+    {
+      "encounter": "ed",
+      "turn": 6,
+      "speaker": "patient",
+      "text": "Ha. Next question, kid."
+    }
+  ]
+}

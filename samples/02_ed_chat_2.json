@@ -1,0 +1,13 @@
+{
+  "speaker": "Walter Brennan",
+  "reply": "My ankles look like somebody inflated them. Can't get my work boots on.",
+  "new_facts": [
+    {
+      "id": "swelling",
+      "label": "Both ankles swollen; shoes don't fit",
+      "critical": false
+    }
+  ],
+  "dodged": false,
+  "hidden_count": 6
+}

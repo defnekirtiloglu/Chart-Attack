@@ -1,0 +1,13 @@
+{
+  "speaker": "Walter Brennan",
+  "reply": "Ayşe does the pill box every Sunday. Her English reading isn't great, so she goes by the color of the pills mostly.",
+  "new_facts": [
+    {
+      "id": "wife_pills",
+      "label": "Wife Ayşe fills his pill box; she reads little English and speaks Turkish",
+      "critical": true
+    }
+  ],
+  "dodged": false,
+  "hidden_count": 4
+}
