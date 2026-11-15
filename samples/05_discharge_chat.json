@@ -1,14 +1,16 @@
 {
   "speaker": "Ayşe Brennan",
-  "interpreted_tr": "[Türkçe çeviri] Weigh him every morning after the bathroom before breakfast and write it down. Call us if his weight goes up 2 pounds in a day or 5 pounds in a week. He must take the water pill every single morning, even on bowling days, he can take it after bowling.",
+  "interpreter": true,
+  "interpreted_tr": "[Türkçe] Weigh him every morning after the bathroom before breakfast and write it down. Call us if his weight goes up 2 pounds in a day or 5 pounds in a week. He must take the water pill every single morning, even on bowling days, he can take it after bowling.",
   "translation_check": {
     "status": "unchecked",
     "back_translation": null,
     "issues": [],
     "why": "The back-translation checker is offline, so this translation was not verified."
   },
-  "reply_tr": "Anladım, teşekkür ederim.",
-  "reply_en": "I understand, thank you.",
+  "too_long": false,
+  "reply_tr": "Tamam, tamam. I understand, teşekkürler.",
+  "reply_en": "Okay, okay. I understand, thank you.",
   "points": [
     {
       "id": "weigh_daily",

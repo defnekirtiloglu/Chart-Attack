@@ -1,0 +1,6 @@
+# DOMAIN unset -> plain HTTP on the server's IP. DOMAIN=rounds.example.com -> automatic HTTPS.
+{$DOMAIN} {
+    reverse_proxy app:8000 {
+        flush_interval -1      # stream the deep agent's steps live
+    }
+}

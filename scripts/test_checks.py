@@ -2,7 +2,7 @@
 import sys; from pathlib import Path; sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from backend import llm, engine
 # Fake models: Gemini and Claude disagree on one fact; interpreter turns pounds into kilos.
-def g_json(prompt, temperature=0.2):
+def g_json(prompt, temperature=0.2, **kw):
     if "handoff note" in prompt: return {"fact_ids": ["breathless", "skips_diuretic", "wife_pills"]}
     return None
 def c_json(prompt, system=""):
@@ -12,7 +12,7 @@ def c_json(prompt, system=""):
 def c_text(prompt, system="", **k):
     if "Translate this Turkish" in prompt: return "Weigh him every morning. Call if he gains 1 kilo in a day."
     return None
-def g_text(prompt, temperature=0.8):
+def g_text(prompt, temperature=0.8, **kw):
     if "Translate into natural" in prompt: return "Her sabah tartın. Bir günde 1 kilo alırsa arayın."
     return None
 llm.ask_json, llm.claude_json, llm.claude_text, llm.ask_text = g_json, c_json, c_text, g_text

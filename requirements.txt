@@ -4,3 +4,6 @@ pydantic
 python-dotenv
 google-genai
 httpx
+deepagents; python_version >= "3.11"
+langchain-google-genai; python_version >= "3.11"
+langchain-anthropic; python_version >= "3.11"

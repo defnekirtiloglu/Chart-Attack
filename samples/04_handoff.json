@@ -72,9 +72,10 @@
   ],
   "pharmacist": {
     "name": "Dr. Mei Tanaka, PharmD",
-    "note": "Creatinine went from 1.2 to 1.6, so I checked his OTC meds. He takes ibuprofen most days for his knee. Added to the plan: stop ibuprofen, acetaminophen instead.",
+    "note": "Creatinine went from 1.2 to 1.6, so I checked his over-the-counter meds. He takes ibuprofen most days for his knee. Added to the plan: stop ibuprofen, acetaminophen instead.",
     "caught": [
       "ibuprofen"
-    ]
+    ],
+    "why": "Creatinine rose from 1.2 to 1.6. Ibuprofen and similar pain pills strain the kidneys and make the body hold fluid, which is dangerous in heart failure."
   }
 }

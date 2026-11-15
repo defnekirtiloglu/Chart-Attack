@@ -1,9 +1,12 @@
 {
-  "session_id": "c98265ad98",
+  "session_id": "7b2a16a960",
+  "assignment_id": null,
+  "student_id": null,
   "case": {
     "id": "walter",
     "title": "Walter: short of breath, again",
     "disclaimer": "Fictional teaching case written for HackPrinceton 2026. Not medical advice.",
+    "chief_complaint": "Short of breath for 5 days; sleeping in his recliner",
     "patient": {
       "name": "Walter Brennan",
       "age": 72,
@@ -13,9 +16,60 @@
     "caregiver": {
       "name": "Ayşe Brennan",
       "relation": "wife",
-      "language": "Turkish"
+      "language": "tr",
+      "language_name": "Türkçe"
     }
   },
+  "facts": [
+    {
+      "id": "breathless",
+      "label": "5 days of worsening breathlessness; now sleeps in his recliner",
+      "status": "found",
+      "tone": "good"
+    },
+    {
+      "id": "swelling",
+      "label": "Both ankles swollen; shoes don't fit",
+      "status": "found",
+      "tone": "good"
+    },
+    {
+      "id": "skips_diuretic",
+      "label": "Skips his water pill (furosemide) on bowling days, Tue and Thu",
+      "status": "found",
+      "tone": "bad"
+    },
+    {
+      "id": "wife_pills",
+      "label": "Wife Ayşe fills his pill box; she reads little English and speaks Turkish",
+      "status": "found",
+      "tone": "bad"
+    },
+    {
+      "id": "spo2",
+      "label": "SpO2 84% on room air on arrival",
+      "status": "found",
+      "tone": "good"
+    },
+    {
+      "id": "cxr",
+      "label": "Chest X-ray: vascular congestion and right lower lobe infiltrate",
+      "status": "found",
+      "tone": "good"
+    },
+    {
+      "id": "ef",
+      "label": "Echo: EF about 30%, down from 40% last year",
+      "status": "found",
+      "tone": "good"
+    },
+    {
+      "id": "creatinine",
+      "label": "Creatinine 1.6 mg/dL (baseline 1.2)",
+      "status": "found",
+      "tone": "good"
+    }
+  ],
   "stage": "ed",
   "encounter": {
     "id": "ed",
@@ -113,7 +167,7 @@
       "how": "chart"
     }
   ],
-  "hidden_count": 4,
+  "hidden_count": 5,
   "handoff": null,
   "plan": [],
   "transcript": [

@@ -1,0 +1,22 @@
+# On the Vultr server:  docker compose up -d --build
+# Keys come from .env (never committed). Set DOMAIN in .env for automatic HTTPS (needed for the mic button).
+services:
+  app:
+    build: .
+    env_file: .env
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data          # classes, results, events and the agent's memory survive restarts
+      - ./cases:/app/cases        # cases professors create survive restarts
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      - DOMAIN=${DOMAIN:-:80}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+    depends_on: [app]
+volumes:
+  caddy_data:

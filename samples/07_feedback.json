@@ -1,8 +1,23 @@
 {
+  "focus": [
+    {
+      "skill": "Earning trust",
+      "why": "Embarrassing habits stayed hidden. Ask without judgment, or ask again."
+    },
+    {
+      "skill": "Covering the basics",
+      "why": "Some routine questions were never asked: meds, pain pills, who helps at home."
+    },
+    {
+      "skill": "Plain-language teaching",
+      "why": "The caregiver couldn't repeat parts of the plan back."
+    }
+  ],
   "threads": [
     {
       "id": "skips_diuretic",
       "label": "Skips his water pill (furosemide) on bowling days, Tue and Thu",
+      "short": "Skips his water pill",
       "steps": [
         {
           "stage": "ed",
@@ -27,6 +42,7 @@
     {
       "id": "ibuprofen",
       "label": "Takes ibuprofen most days for a bad right knee",
+      "short": "Ibuprofen for his knee",
       "steps": [
         {
           "stage": "ed",
@@ -36,7 +52,7 @@
         {
           "stage": "handoff",
           "ok": true,
-          "note": "Pharmacist caught it from the kidney labs"
+          "note": "Pharmacist caught it from the chart"
         },
         {
           "stage": "discharge",
@@ -51,6 +67,7 @@
     {
       "id": "salt",
       "label": "High-salt diet: canned soup and deli meat at the bowling alley; Ayşe cooks low salt at home",
+      "short": "Salty bowling-alley lunches",
       "steps": [
         {
           "stage": "ed",
@@ -75,6 +92,7 @@
     {
       "id": "wife_pills",
       "label": "Wife Ayşe fills his pill box; she reads little English and speaks Turkish",
+      "short": "Ayşe runs the pill box",
       "steps": [
         {
           "stage": "ed",
@@ -100,7 +118,7 @@
   "carried_home": 1,
   "total_threads": 4,
   "facts_found": 5,
-  "facts_total": 8,
+  "facts_total": 9,
   "standard_points_understood": 1,
   "standard_points_total": 5,
   "jargon_used": [],
@@ -118,7 +136,7 @@
       "turkish_pillbox",
       "stop_ibuprofen"
     ],
-    "tr": "Anladığım kadarıyla: Weigh every morning after the bathroom, before breakfast, and write it down. Call if up 2 lb in a day or 5 lb in a week. Take the water pill every single morning, including bowling days. It can be taken after bowling instead of before if needed.",
-    "en": "What I understood: Weigh every morning after the bathroom, before breakfast, and write it down. Call if up 2 lb in a day or 5 lb in a week. Take the water pill every single morning, including bowling days. It can be taken after bowling instead of before if needed."
+    "tr": "Okay, I understand: Weigh every morning after the bathroom, before breakfast, and write it down. Call if up 2 lb in a day or 5 lb in a week. Take the water pill every single morning, including bowling days. It can be taken after bowling instead of before if needed. But the rest... I don't know.",
+    "en": "Okay, I understood: Weigh every morning after the bathroom, before breakfast, and write it down. Call if up 2 lb in a day or 5 lb in a week. Take the water pill every single morning, including bowling days. It can be taken after bowling instead of before if needed. But the rest, I don't know."
   }
 }

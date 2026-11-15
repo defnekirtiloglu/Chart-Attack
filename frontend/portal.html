@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OSCEnario Rounds</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f6f2e8; --paper-2:#fffdf8; --ink:#1f1d1a; --ink-2:#5c574e; --ink-3:#8d877b; --rule:#e4ddcc;
+  --walter:#c7791a; --walter-bg:#fbeedb; --ayse:#2463c7; --ayse-bg:#e3ecfa; --okafor:#7a4cc2; --okafor-bg:#efe6fb;
+  --ok:#1f8a5b; --ok-bg:#e1f3ea; --warn:#b97c04; --warn-bg:#fdf1d4; --bad:#cf3b2f; --bad-bg:#fbe5e2;
+  --serif:"Source Serif 4",Georgia,serif; --sans:Inter,system-ui,-apple-system,sans-serif;
+  --radius:14px; --shadow:0 1px 0 rgba(0,0,0,.04),0 6px 24px -12px rgba(60,40,10,.25);
+}
+*{box-sizing:border-box} html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font:15px/1.5 var(--sans);-webkit-font-smoothing:antialiased;min-height:100vh}
+button,input,textarea,select{font:inherit;color:inherit} button{cursor:pointer} a{color:inherit}
+:focus-visible{outline:2px solid var(--ayse);outline-offset:2px}
+[hidden]{display:none!important}
+
+/* top bar */
+.top{position:sticky;top:0;z-index:20;height:60px;background:rgba(246,242,232,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:16px;padding:0 20px}
+.brand{font:700 19px var(--serif);text-decoration:none;white-space:nowrap}
+.brand span{color:var(--ink-3);font-weight:400}
+.crumbs{color:var(--ink-3);font-size:14px;display:flex;gap:6px;align-items:center;min-width:0;overflow:hidden;white-space:nowrap}
+.crumbs a{text-decoration:none;color:var(--ink-2)} .crumbs a:hover{text-decoration:underline}
+.top .sp{flex:1}
+.roles{display:flex;gap:2px;background:#ece6d7;padding:3px;border-radius:999px}
+.roles button{border:0;background:none;padding:5px 14px;border-radius:999px;font-weight:500;font-size:14px;color:var(--ink-2)}
+.roles button[aria-pressed=true]{background:var(--paper-2);color:var(--ink);box-shadow:var(--shadow)}
+.mode{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--rule);color:var(--ink-2);white-space:nowrap}
+.mode.live{color:var(--ok);border-color:#b9dfcb;background:var(--ok-bg)} .mode.down{color:var(--bad);border-color:#f0c4be;background:var(--bad-bg)}
+
+/* shell */
+.shell{display:grid;grid-template-columns:220px minmax(0,1fr);min-height:calc(100vh - 60px)}
+nav.side{border-right:1px solid var(--rule);padding:18px 12px;display:flex;flex-direction:column;gap:2px}
+nav.side a{display:flex;gap:10px;align-items:center;padding:9px 12px;border-radius:10px;text-decoration:none;color:var(--ink-2);font-weight:500}
+nav.side a:hover{background:#efe9db}
+nav.side a.on{background:var(--paper-2);color:var(--ink);box-shadow:var(--shadow)}
+nav.side .sub{font-size:12px;color:var(--ink-3);padding:14px 12px 4px}
+nav.side a.course{padding:7px 12px 7px 32px;font-size:14px;font-weight:500}
+nav.side a.course.on{box-shadow:none;background:transparent;color:var(--ink);border-left:3px solid var(--ink);border-radius:0 10px 10px 0}
+nav.side .dot{width:10px;height:10px;border-radius:3px;flex:none}
+main{padding:28px 32px 80px;max-width:1180px;width:100%}
+
+/* type */
+h1{font:600 30px/1.15 var(--serif);margin:0;letter-spacing:-.015em}
+h2{font:600 21px/1.2 var(--serif);margin:0}
+h3{font:600 15px var(--sans);margin:0}
+.lede{color:var(--ink-2);margin:6px 0 0;max-width:680px}
+.muted{color:var(--ink-3)} .small{font-size:13px}
+.head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+
+/* controls */
+.btn{border:0;border-radius:10px;padding:9px 15px;font-weight:600;background:var(--ink);color:var(--paper);display:inline-flex;gap:8px;align-items:center;white-space:nowrap;text-decoration:none;font-size:14px}
+.btn:hover{filter:brightness(1.15)} .btn:disabled{opacity:.45;cursor:default}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--rule)} .btn.ghost:hover{background:#efe9db;filter:none}
+.btn.small{padding:6px 11px;font-size:13px;border-radius:8px}
+label{display:block;font-size:13px;font-weight:500;color:var(--ink-2);margin:12px 0 6px}
+input[type=text],input[type=date],textarea,select{width:100%;border:1px solid var(--rule);background:#fff;border-radius:10px;padding:10px 12px;outline:none}
+textarea{min-height:120px;resize:vertical}
+.err{color:var(--bad);font-size:13px;margin-top:6px;min-height:1em}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.card{background:var(--paper-2);border:1px solid var(--rule);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}
+
+/* class cards */
+.classes{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px}
+.cls{background:var(--paper-2);border:1px solid var(--rule);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;text-decoration:none;display:flex;flex-direction:column;min-height:150px;transition:transform .15s}
+.cls:hover{transform:translateY(-2px)}
+.cls .banner{padding:16px 18px 14px;color:#fff;min-height:96px;display:flex;flex-direction:column;justify-content:flex-end}
+.cls .banner b{font:600 21px/1.15 var(--serif)} .cls .banner span{font-size:13px;opacity:.9}
+.cls .meta{padding:12px 18px;color:var(--ink-2);font-size:13.5px;display:flex;justify-content:space-between;gap:8px;margin-top:auto;border-top:1px solid var(--rule)}
+.cls.new{border:1.5px dashed var(--rule);box-shadow:none;background:transparent;align-items:center;justify-content:center;color:var(--ink-2);font-weight:600;cursor:pointer}
+.cls.new:hover{background:#efe9db}
+
+/* class page */
+.cbanner{border-radius:var(--radius);color:#fff;padding:26px 28px;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:6px}
+.cbanner h1{color:#fff} .cbanner p{margin:4px 0 0;opacity:.9}
+.joincode{background:rgba(255,255,255,.18);border-radius:12px;padding:8px 14px;text-align:right}
+.joincode small{display:block;font-size:12px;opacity:.85} .joincode b{font:700 24px var(--serif);letter-spacing:.12em}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--rule);margin:14px 0 22px}
+.tabs a{padding:10px 14px;text-decoration:none;color:var(--ink-2);font-weight:500;border-bottom:2.5px solid transparent;margin-bottom:-1px}
+.tabs a.on{color:var(--ink);border-bottom-color:var(--ink)}
+
+/* lists */
+.list{display:flex;flex-direction:column}
+.item{display:flex;gap:14px;align-items:center;padding:14px 4px;border-top:1px solid var(--rule)}
+.item:first-child{border-top:0}
+a.item{text-decoration:none;border-radius:10px} a.item:hover{background:#f3eee2}
+.item .ico{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;flex:none;font-weight:700;font-size:13px}
+.item .grow{flex:1;min-width:0} .item .title{font-weight:600}
+.pill{display:inline-block;font-size:12px;font-weight:500;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.pill.draft{background:var(--warn-bg);color:#7a5200} .pill.published{background:var(--ok-bg);color:#155c3d}
+.pill.bad{background:var(--bad-bg);color:#8f2219} .pill.info{background:var(--okafor-bg);color:#4b2c80}
+.chip{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;margin:2px 4px 2px 0;background:var(--bad-bg);color:#8f2219}
+.chip.rescued{background:var(--okafor-bg);color:#4b2c80}
+.focus{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;margin:2px 4px 2px 0;background:var(--walter-bg);color:#6b3e07}
+.empty{color:var(--ink-3);font-size:14px;padding:10px 0}
+.section{margin-top:28px} .section > h2{margin-bottom:12px}
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+
+/* tables */
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-weight:500;color:var(--ink-3);font-size:12.5px;padding:8px 10px;border-bottom:1px solid var(--rule);white-space:nowrap}
+td{padding:11px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+.score{font-weight:600} .score.none{color:var(--ink-3);font-weight:400}
+.grade-link{text-decoration:none;border-bottom:1px dashed var(--ink-3)}
+
+/* agent */
+.steps-live{list-style:none;margin:12px 0 0;padding:0;font-size:14px}
+.steps-live li{display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-top:1px dashed var(--rule)}
+.steps-live li:first-child{border-top:0}
+.steps-live .ic{width:18px;flex:none;text-align:center} .steps-live .ok{color:var(--ok)} .steps-live .no{color:var(--bad)} .steps-live .plan{color:var(--okafor)}
+.agent-plan ol{margin:6px 0 10px;padding-left:20px;font-size:14px}
+.agent-plan li.completed{color:var(--ok);text-decoration:line-through} .agent-plan li.in_progress{font-weight:600}
+.agent-files details{border:1px solid var(--rule);border-radius:8px;margin:6px 0;background:#fff}
+.agent-files summary{padding:6px 10px;cursor:pointer;font-size:13px}
+.agent-files pre{margin:0;padding:10px;max-height:280px;overflow:auto;font-size:12px;border-top:1px solid var(--rule);white-space:pre-wrap}
+.approve-card{margin-top:12px;border:2px solid var(--okafor);border-radius:12px;padding:14px;background:var(--okafor-bg)}
+code{font-size:12.5px;background:#f1ece0;padding:1px 5px;border-radius:5px}
+.review{margin-top:14px;border-left:3px solid var(--okafor);padding:4px 0 4px 12px} .review li{margin:4px 0}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* analytics */
+.bar-row{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 28px;gap:10px;align-items:center;font-size:13.5px;padding:5px 0}
+.meter{display:block;height:10px;background:#efe9db;border-radius:999px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--bad);border-radius:999px}
+.att{display:inline-block;font-size:12.5px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--ok-bg);color:#155c3d}
+
+.transcript{max-height:440px;overflow:auto;border:1px solid var(--rule);border-radius:10px;padding:12px;background:#fff}
+.line{margin:0 0 8px;font-size:14px} .line b{font-weight:600}
+.line.patient b{color:var(--walter)} .line.caregiver b{color:var(--ayse)} .line.cardiologist b,.line.pharmacist b{color:var(--okafor)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:10px;opacity:0;transition:.25s;pointer-events:none;z-index:50}
+.toast.show{opacity:1;transform:translateX(-50%)} .toast.err{background:var(--bad)}
+@media (max-width:900px){.shell{grid-template-columns:1fr} nav.side{flex-direction:row;overflow:auto;border-right:0;border-bottom:1px solid var(--rule);padding:8px} nav.side .sub{display:none} main{padding:20px 16px 60px} .split{grid-template-columns:1fr} .crumbs{display:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="#/">OSCEnario Rounds</a>
+  <div class="crumbs" id="crumbs"></div>
+  <div class="sp"></div>
+  <div class="roles" role="group" aria-label="View as">
+    <button id="as-prof" aria-pressed="true">Professor</button>
+    <button id="as-student" aria-pressed="false">Student</button>
+  </div>
+  <div class="mode" id="mode">Checking…</div>
+</header>
+<div class="shell">
+  <nav class="side" id="side"></nav>
+  <main id="view"><p class="empty">Loading…</p></main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const API = (params.get('api') || window.WALTER_API || (location.port === '5500' || location.protocol === 'file:' ? 'http://127.0.0.1:8000' : location.origin)).replace(/\/$/, '');
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const COLORS = ['#2463c7', '#7a4cc2', '#1f8a5b', '#c7791a', '#b0433a', '#2f6f7a'];
+const color = id => COLORS[[...String(id)].reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
+const fmtDate = d => { if (!d) return ''; const x = new Date(d.length === 10 ? d + 'T12:00' : d); return isNaN(x) ? d : x.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
+const roundsUrl = q => 'index.html?' + new URLSearchParams(q).toString();
+const STAGE = { ed: 'ED', handoff: 'handoff', discharge: 'discharge' };
+const state = { role: localStorage.getItem('rounds.role') || 'prof', netid: localStorage.getItem('rounds.netid') || '', cases: [], timer: null };
+
+async function api(method, path, body) {
+  const res = await fetch(API + path, { method, headers: body ? {'Content-Type':'application/json'} : {}, body: body ? JSON.stringify(body) : undefined });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || `Request failed (${res.status})`);
+  return data;
+}
+async function stream(path, body, onEvent) {
+  const res = await fetch(API + path, { method: 'POST', headers: {'Content-Type':'application/json'}, body: body ? JSON.stringify(body) : undefined });
+  if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.detail || `Request failed (${res.status})`); }
+  const reader = res.body.getReader(), dec = new TextDecoder(); let buf = '';
+  for (;;) {
+    const { value, done } = await reader.read(); if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let i; while ((i = buf.indexOf('\n\n')) >= 0) {
+      const chunk = buf.slice(0, i); buf = buf.slice(i + 2);
+      if (chunk.startsWith('data: ')) { try { onEvent(JSON.parse(chunk.slice(6))); } catch {} }
+    }
+  }
+}
+function toast(msg, err) { const t = $('#toast'); t.textContent = msg; t.className = 'toast show' + (err ? ' err' : ''); clearTimeout(t._h); t._h = setTimeout(() => t.className = 'toast', 3200); }
+const crumbs = list => $('#crumbs').innerHTML = list.map(([t, h]) => h ? `<span>›</span><a href="${h}">${esc(t)}</a>` : `<span>›</span><span>${esc(t)}</span>`).join('');
+const view = html => { $('#view').innerHTML = html; window.scrollTo(0, 0); };
+
+/* ======================= routing ======================= */
+function setRole(r) {
+  state.role = r; localStorage.setItem('rounds.role', r);
+  $('#as-prof').setAttribute('aria-pressed', r === 'prof'); $('#as-student').setAttribute('aria-pressed', r === 'student');
+  if (location.hash !== '#/') location.hash = '#/'; else route();
+}
+$('#as-prof').onclick = () => setRole('prof');
+$('#as-student').onclick = () => setRole('student');
+window.addEventListener('hashchange', route);
+
+async function side(active, classes, tab) {
+  const prof = state.role === 'prof';
+  const list = classes || await api('GET', prof ? '/classes' : `/classes?student_id=${encodeURIComponent(state.netid)}`).catch(() => []);
+  $('#side').innerHTML = `
+    <a href="#/" class="${active === 'home' ? 'on' : ''}">🏫 Classes</a>
+    ${prof ? `<a href="#/library" class="${active === 'library' ? 'on' : ''}">📚 Case library</a>` : ''}
+    ${list.length ? '<div class="sub">Your classes</div>' : ''}
+    ${list.map(c => `<a href="#/class/${esc(c.id)}" class="${active === c.id && !tab ? 'on' : ''}"><span class="dot" style="background:${color(c.id)}"></span>${esc(c.name)}</a>`
+      + (active === c.id && prof ? ['classwork', 'people', 'grades', 'analytics'].map(t => `<a class="course ${tab === t ? 'on' : ''}" href="#/class/${esc(c.id)}/${t}">${{ classwork: 'Assignments', people: 'People', grades: 'Grades', analytics: 'Analytics' }[t]}</a>`).join('') : '')).join('')}`;
+}
+
+async function route() {
+  clearInterval(state.timer);
+  const parts = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean);
+  $('#as-prof').setAttribute('aria-pressed', state.role === 'prof'); $('#as-student').setAttribute('aria-pressed', state.role === 'student');
+  try {
+    if (state.role === 'prof') {
+      if (parts[0] === 'library' && parts[1] === 'new') return await pNewCase();
+      if (parts[0] === 'library') return await pLibrary();
+      if (parts[0] === 'class' && parts[2] === 'assignment') return await pAssignment(parts[1], parts[3]);
+      if (parts[0] === 'class') return await pClass(parts[1], parts[2] || 'classwork');
+      return await pHome();
+    }
+    if (!state.netid) return sSignIn();
+    if (parts[0] === 'class') return await sClass(parts[1]);
+    return await sHome();
+  } catch (e) { view(`<div class="card"><h2>Something went wrong</h2><p class="muted">${esc(e.message)}</p><a class="btn ghost" href="#/">Back to classes</a></div>`); }
+}
+
+/* ======================= professor: home ======================= */
+async function pHome() {
+  crumbs([]);
+  const classes = await api('GET', '/classes');
+  await side('home', classes);
+  view(`
+    <div class="head"><div><h1>Classes</h1><p class="lede">Create a class, share its join code, and assign cases. Students' results come back here.</p></div></div>
+    <div class="card" id="new-class" hidden style="margin-bottom:18px;max-width:520px">
+      <h3>New class</h3>
+      <label for="c-name">Class name</label><input type="text" id="c-name" placeholder="Clinical Skills III">
+      <label for="c-section">Section</label><input type="text" id="c-section" placeholder="Fall 2026">
+      <div class="err" id="c-err"></div>
+      <div class="row"><button class="btn" id="c-go">Create class</button><button class="btn ghost" id="c-cancel">Cancel</button></div>
+    </div>
+    <div class="classes">
+      ${classes.slice().reverse().map(c => `
+        <a class="cls" href="#/class/${esc(c.id)}">
+          <div class="banner" style="background:${color(c.id)}"><b>${esc(c.name)}</b><span>${esc(c.section || '')}</span></div>
+          <div class="meta"><span>${c.student_count} student${c.student_count === 1 ? '' : 's'} · ${c.assignment_count} assignment${c.assignment_count === 1 ? '' : 's'}</span><span>Code <b>${esc(c.code)}</b></span></div>
+        </a>`).join('')}
+      <button class="cls new" id="c-open">+ New class</button>
+    </div>`);
+  const open = () => { $('#new-class').hidden = false; $('#c-name').focus(); };
+  $('#c-open').onclick = open;
+  if (!classes.length) open();
+  $('#c-cancel').onclick = () => $('#new-class').hidden = true;
+  $('#c-name').oninput = () => $('#c-err').textContent = '';
+  $('#c-go').onclick = async () => {
+    const name = $('#c-name').value.trim();
+    if (!name) { $('#c-err').textContent = 'Give the class a name.'; $('#c-name').focus(); return; }
+    try { const c = await api('POST', '/classes', { name, section: $('#c-section').value.trim() }); toast('Class created'); location.hash = `#/class/${c.id}`; }
+    catch (e) { $('#c-err').textContent = e.message; }
+  };
+}
+
+/* ======================= professor: one class ======================= */
+async function pClass(cid, tab) {
+  const [cls, all] = await Promise.all([api('GET', `/classes/${cid}`), api('GET', `/assignments?class_id=${cid}`)]);
+  await side(cid, null, tab);
+  const NAMES = { classwork: 'Assignments', people: 'People', grades: 'Grades', analytics: 'Analytics' };
+  crumbs([[cls.name, `#/class/${cid}`], [NAMES[tab] || tab]]);
+  view(`
+    <div class="cbanner" style="background:${color(cid)}">
+      <div><h1>${esc(cls.name)}</h1><p>${esc(cls.section || '')}</p></div>
+      <div class="joincode"><small>Class code</small><b>${esc(cls.code)}</b></div>
+    </div>
+    <h2 style="margin:22px 0 14px">${NAMES[tab] || ''}</h2>
+    <div id="tab"></div>`);
+  if (tab === 'people') return tPeople(cls);
+  if (tab === 'grades') return tGrades(cid);
+  if (tab === 'analytics') return tAnalytics(cid);
+  return tClasswork(cls, all);
+}
+
+async function tClasswork(cls, all) {
+  if (!state.cases.length) state.cases = await api('GET', '/cases?include_drafts=true');
+  const pub = state.cases.filter(c => c.status === 'published');
+  $('#tab').innerHTML = `
+    <div class="row" style="justify-content:space-between;margin-bottom:12px">
+      <button class="btn" id="a-open">+ Assign a case</button>
+      <a class="btn ghost small" href="#/library">Case library</a>
+    </div>
+    <div class="card" id="a-form" hidden style="margin-bottom:16px">
+      <h3>Assign a case to ${esc(cls.name)}</h3>
+      <div class="row" style="margin-top:10px;align-items:flex-end">
+        <div style="flex:2;min-width:200px"><label for="a-case">Case</label>
+          <select id="a-case">${pub.length ? pub.map(p => `<option value="${esc(p.id)}">${esc(p.title)}</option>`).join('') : '<option value="">No published cases yet</option>'}</select></div>
+        <div style="flex:1;min-width:140px"><label for="a-due">Due</label><input type="date" id="a-due"></div>
+        <button class="btn" id="a-go" ${pub.length ? '' : 'disabled'}>Assign</button>
+      </div>
+      ${pub.length ? '' : '<p class="small muted">Publish a case in the <a href="#/library">case library</a> first.</p>'}
+    </div>
+    <div class="card"><div class="list">${all.length ? all.slice().reverse().map(a => `
+      <a class="item" href="#/class/${esc(cls.id)}/assignment/${esc(a.id)}">
+        <span class="ico" style="background:${color(cls.id)}22;color:${color(cls.id)}">📋</span>
+        <div class="grow"><div class="title">${esc(a.title)} ${a.student_id ? `<span class="pill info">Only for ${esc(a.student_id)}</span>` : ''}</div>
+          <div class="muted small">${a.due ? 'Due ' + esc(fmtDate(a.due)) + ' · ' : ''}Posted ${esc(fmtDate(a.created))}</div></div>
+        <div class="small" style="text-align:right"><b>${a.submitted}</b> of ${a.class_size}<div class="muted">finished</div></div>
+      </a>`).join('') : '<div class="empty">Nothing assigned yet. Click "Assign a case".</div>'}</div></div>`;
+  $('#a-open').onclick = () => { $('#a-form').hidden = !$('#a-form').hidden; };
+  if (!all.length) $('#a-form').hidden = false;
+  $('#a-go').onclick = async () => {
+    try { await api('POST', '/assignments', { class_id: cls.id, case_id: $('#a-case').value, due: $('#a-due').value }); toast('Assigned'); route(); }
+    catch (e) { toast(e.message, true); }
+  };
+}
+
+function tPeople(cls) {
+  $('#tab').innerHTML = `<div class="split">
+    <div class="card"><h2>Students</h2><div class="list" style="margin-top:8px">${cls.students.length ? cls.students.map(s => `
+      <div class="item"><span class="ico" style="background:var(--ayse-bg);color:var(--ayse)">${esc(s.slice(0, 2).toUpperCase())}</span><div class="grow"><div class="title">${esc(s)}</div></div></div>`).join('')
+      : '<div class="empty">No students yet.</div>'}</div></div>
+    <div class="card"><h2>Invite students</h2><p class="muted">Students open Rounds, choose <b>Student</b>, sign in with their NetID, and enter this code:</p>
+      <div style="font:700 34px var(--serif);letter-spacing:.14em;color:${color(cls.id)}">${esc(cls.code)}</div></div></div>`;
+}
+
+async function tGrades(cid) {
+  const g = await api('GET', `/classes/${cid}/gradebook`);
+  if (!g.students.length || !g.assignments.length) { $('#tab').innerHTML = `<div class="card"><div class="empty">${!g.students.length ? 'No students yet. Share the class code.' : 'Nothing assigned yet.'}</div></div>`; return; }
+  $('#tab').innerHTML = `<div class="card" style="overflow:auto"><p class="small muted" style="margin:0 0 10px">Key facts that made it all the way home, latest attempt. Click a score to open that student's results.</p>
+    <table><thead><tr><th>Student</th>${g.assignments.map(a => `<th>${esc(a.title)}${a.student_id ? ' <span class="pill info">1 student</span>' : ''}</th>`).join('')}</tr></thead>
+    <tbody>${g.students.map(s => `<tr><td><b>${esc(s)}</b></td>${g.assignments.map(a => {
+      const c = (g.cells[s] || {})[a.id];
+      if (a.student_id && a.student_id !== s) return '<td class="muted small">·</td>';
+      return `<td>${c ? `<a class="score grade-link" href="#/class/${esc(cid)}/assignment/${esc(a.id)}">${c.carried_home}/${c.total}</a>` : '<span class="score none">Not started</span>'}</td>`;
+    }).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+
+const KIND = { question: 'Questions asked', fact_found: 'Facts found', fact_dodged: 'Dodged by the patient', handoff: 'Handoffs written',
+  handoff_gap: 'Handoff gaps', pharmacist_catch: 'Pharmacist catches', teaching_turn: 'Teaching turns', translation_flag: 'Translation flags',
+  jargon: 'Jargon caught', too_long: 'Too-long sentences', teachback: 'Teach-backs', fact_lost: 'Facts lost', finished: 'Cases finished' };
+async function tAnalytics(cid) {
+  const draw = async () => {
+    const a = await api('GET', `/classes/${cid}/analytics`);
+    const max = Math.max(1, ...a.most_lost.map(r => r.losses));
+    const by = {}; a.trend.forEach(t => (by[t.student_id] = by[t.student_id] || []).push(t));
+    const hour = a.live.reduce((m, r) => (m[r.kind] = (m[r.kind] || 0) + r.n, m), {});
+    if (!$('#tab')) return;
+    $('#tab').innerHTML = `<div class="split">
+      <div class="card"><h2>Where the class loses facts</h2><p class="small muted" style="margin:4px 0 10px">Every finished attempt, by fact and the stage it was lost at.</p>
+        ${a.most_lost.length ? a.most_lost.map(r => `<div class="bar-row"><span>${esc(r.label)} <span class="muted">at ${esc(STAGE[r.stage] || r.stage)}</span></span><span class="meter"><i style="width:${Math.round(100 * r.losses / max)}%"></i></span><b>${r.losses}</b></div>`).join('') : '<div class="empty">No finished attempts yet.</div>'}</div>
+      <div>
+        <div class="card"><h2>Progress across attempts</h2>
+          ${Object.keys(by).length ? Object.entries(by).map(([s, ts]) => `<div class="bar-row" style="grid-template-columns:100px 1fr"><b>${esc(s)}</b><span>${ts.map(t => `<span class="att" title="${esc(t.title)}">${t.carried_home}/${t.total_threads}</span>`).join(' → ')}</span></div>`).join('') : '<div class="empty">No attempts yet.</div>'}</div>
+        <div class="card" style="margin-top:18px"><h2>Last hour</h2><p class="small muted" style="margin:4px 0 8px">Updates every 10 seconds.</p>
+          ${Object.keys(hour).length ? Object.entries(hour).map(([k, n]) => `<span class="focus">${esc(KIND[k] || k)}: ${n}</span>`).join('') : '<div class="empty">Quiet.</div>'}</div>
+      </div></div>`;
+  };
+  await draw(); state.timer = setInterval(() => draw().catch(() => {}), 10000);
+}
+
+/* ======================= professor: one assignment ======================= */
+const WHO = { student: 'Student', patient: 'Patient', cardiologist: 'Specialist', pharmacist: 'Pharmacist', caregiver: 'Caregiver' };
+async function pAssignment(cid, aid) {
+  const r = await api('GET', `/assignments/${aid}/results`);
+  await side(cid, null, 'classwork');
+  crumbs([[r.class.name, `#/class/${cid}`], ['Assignments', `#/class/${cid}/classwork`], [r.assignment.title]]);
+  const done = r.rows.filter(x => x.done).length;
+  view(`
+    <div class="head">
+      <div><h1>${esc(r.assignment.title)}</h1><p class="lede">${r.assignment.due ? 'Due ' + esc(fmtDate(r.assignment.due)) + ' · ' : ''}${done} of ${r.rows.length} finished${r.assignment.student_id ? ' · personal follow-up for ' + esc(r.assignment.student_id) : ''}</p></div>
+      <div class="row"><a class="btn ghost small" href="key.html?case=${encodeURIComponent(r.assignment.case_id)}">Answer key</a><a class="btn ghost small" href="${roundsUrl({ case: r.assignment.case_id })}">Try it yourself</a>
+        <button class="btn ghost small" id="unassign">Remove assignment</button></div>
+    </div>
+    <div class="card" style="overflow:auto">${r.rows.length ? `<table>
+      <thead><tr><th>Student</th><th>Made it home</th><th>Facts found</th><th>Where facts were lost</th><th>Practice next</th><th></th></tr></thead>
+      <tbody>${r.rows.map(x => `<tr>
+        <td><b>${esc(x.student_id)}</b>${x.finished ? `<div class="muted small">${esc(fmtDate(x.finished))}</div>` : ''}</td>
+        <td>${x.done ? `<span class="score">${x.carried_home} of ${x.total_threads}</span>` : '<span class="score none">Not started</span>'}</td>
+        <td>${x.done ? `${x.facts_found} of ${x.facts_total}` : ''}</td>
+        <td>${x.lost.map(l => `<span class="chip ${l.rescued_by ? 'rescued' : ''}">${esc(l.fact)}: ${esc(STAGE[l.at] || l.at)}${l.rescued_by ? ' (pharmacist caught it)' : ''}</span>`).join('')}${x.translation_flags ? `<span class="chip">${x.translation_flags} translation flag${x.translation_flags > 1 ? 's' : ''}</span>` : ''}</td>
+        <td>${(x.focus || []).map(f => `<span class="focus" title="${esc(f.why)}">${esc(f.skill)}</span>`).join('')}</td>
+        <td>${x.done ? `<div class="row" style="gap:6px;flex-wrap:nowrap"><button class="btn ghost small" data-detail="${esc(x.session_id)}">Transcript</button><button class="btn small" data-follow="${esc(x.session_id)}" data-student="${esc(x.student_id)}">Make follow-up case</button></div>` : ''}</td>
+      </tr><tr hidden id="d-${esc(x.session_id)}"><td colspan="6"></td></tr>`).join('')}</tbody></table>` : '<div class="empty">No students in this class yet. Share the class code from the People tab.</div>'}</div>`);
+  $('#unassign').onclick = async () => { try { await api('DELETE', `/assignments/${aid}`); toast('Assignment removed'); location.hash = `#/class/${cid}`; } catch (e) { toast(e.message, true); } };
+  document.querySelectorAll('[data-detail]').forEach(b => b.onclick = () => showDetail(b.dataset.detail, b));
+  document.querySelectorAll('[data-follow]').forEach(b => b.onclick = () => followUp(b, cid));
+}
+
+async function showDetail(sid, btn) {
+  const row = $('#d-' + sid);
+  if (!row.hidden && btn.textContent === 'Hide') { row.hidden = true; btn.textContent = 'Transcript'; return; }
+  row.hidden = false; btn.textContent = 'Hide';
+  const cell = row.firstElementChild; cell.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const r = await api('GET', `/results/${sid}`);
+    const title = { ed: 'Emergency department', handoff: 'Handoff', discharge: 'Discharge', done: 'Teach-back' };
+    let last = '';
+    cell.innerHTML = `<div class="transcript">${r.transcript.map(t => {
+      const head = t.encounter !== last ? `<h3 style="margin:${last ? '14px' : '0'} 0 8px">${esc(title[t.encounter] || t.encounter)}</h3>` : ''; last = t.encounter;
+      const flag = (t.translation_check || {}).status === 'flagged' ? `<div class="chip">Translation flagged: ${esc(t.translation_check.issues.join('; '))}</div>` : '';
+      return head + `<p class="line ${esc(t.speaker)}"><b>${esc(WHO[t.speaker] || t.speaker)}:</b> ${esc(t.text)}${t.text_en ? ` <span class="muted">(${esc(t.text_en)})</span>` : ''}</p>${flag}`;
+    }).join('')}</div>`;
+  } catch (e) { cell.innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+
+async function followUp(btn, cid) {
+  const sid = btn.dataset.follow, student = btn.dataset.student;
+  const row = $('#d-' + sid); row.hidden = false; btn.disabled = true;
+  const cell = row.firstElementChild;
+  cell.innerHTML = `<div style="padding:6px 0"><h3>Writing ${esc(student)}'s next case, aimed at what they missed</h3><div></div></div>`;
+  const v = agentView(cell.querySelector('div > div'), s => {
+    cell.firstElementChild.insertAdjacentHTML('beforeend', `<div class="row" style="margin-top:10px">
+      <a class="btn ghost small" href="key.html?case=${encodeURIComponent(s.case_id)}">Review the answer key</a>
+      <button class="btn small" id="pa-${esc(sid)}">Publish and assign to ${esc(student)}</button></div>`);
+    $('#pa-' + sid).onclick = async () => {
+      try { await api('POST', `/cases/${s.case_id}/publish`); await api('POST', '/assignments', { class_id: cid, case_id: s.case_id, student_id: student, title: s.title });
+        state.cases = []; toast(`Assigned to ${student}`); location.hash = `#/class/${cid}`; }
+      catch (e) { toast(e.message, true); }
+    };
+  });
+  try { await stream(`/results/${sid}/follow-up`, null, ev => v.on(ev)); } catch (e) { toast(e.message, true); }
+  btn.disabled = false;
+}
+
+/* ======================= professor: case library ======================= */
+async function pLibrary() {
+  crumbs([['Case library']]);
+  await side('library');
+  state.cases = await api('GET', '/cases?include_drafts=true');
+  const mem = await api('GET', '/agent/memory').catch(() => ({ content: '' }));
+  const prefs = (mem.content.split('## Professor preferences')[1] || '').split('\n').filter(l => l.trim().startsWith('- '));
+  view(`
+    <div class="head"><div><h1>Case library</h1><p class="lede">Every patient you can assign. Students only see published cases.</p></div>
+      <a class="btn" href="#/library/new">+ New case</a></div>
+    <div class="card"><div class="list">${state.cases.map(c => `
+      <div class="item">
+        <span class="ico" style="background:var(--walter-bg);color:var(--walter)">${esc((c.patient?.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2))}</span>
+        <div class="grow"><div class="title">${esc(c.title)} <span class="pill ${c.status === 'published' ? 'published' : 'draft'}">${c.status === 'published' ? 'Published' : 'Draft'}</span>
+          ${c.valid === false ? '<span class="pill bad">Needs fixes</span>' : ''}${c.follow_up_for ? `<span class="pill info">Follow-up for ${esc(c.follow_up_for)}</span>` : ''}</div>
+          <div class="muted small">${esc(c.patient?.name || '')}${c.patient?.age ? ', ' + esc(c.patient.age) : ''}${c.caregiver?.name ? ` · teaches ${esc(c.caregiver.name)} (${esc(c.caregiver.relation || '')}${c.caregiver.language ? ', ' + esc(c.caregiver.language) : ''})` : ''}</div></div>
+        <a class="btn ghost small" href="key.html?case=${encodeURIComponent(c.id)}">Answer key</a>
+        <a class="btn ghost small" href="${roundsUrl({ case: c.id })}">Try it</a>
+        ${c.status !== 'published' ? `<button class="btn small" data-publish="${esc(c.id)}">Publish</button>` : ''}
+      </div>`).join('') || '<div class="empty">No cases yet.</div>'}</div></div>
+    <div class="section"><h2>What the case author has learned from you</h2>
+      <div class="card"><ul class="small" style="margin:0;padding-left:18px">${prefs.length ? prefs.map(l => `<li>${esc(l.trim().slice(2))}</li>`).join('') : '<li class="muted">Nothing yet. When you send a draft back with a note, the agent saves the lesson in its memory file (AGENTS.md) and follows it next time.</li>'}</ul></div></div>`);
+  document.querySelectorAll('[data-publish]').forEach(b => b.onclick = async () => {
+    try { await api('POST', `/cases/${b.dataset.publish}/publish`); toast('Published'); route(); } catch (e) { toast(e.message, true); }
+  });
+}
+
+function reviewHtml(review, validation) {
+  let h = '';
+  if (validation && ((validation.errors || []).length || (validation.warnings || []).length))
+    h += `<div class="review"><b>Structure check</b><ul>${(validation.errors || []).map(e => `<li style="color:var(--bad)">${esc(e)}</li>`).join('')}${(validation.warnings || []).map(w => `<li>${esc(w)}</li>`).join('')}</ul></div>`;
+  if (review && (review.issues || []).length)
+    h += `<div class="review"><b>Clinical review: ${esc(review.verdict || '')}</b><ul>${review.issues.map(i => `<li><span class="pill ${i.severity === 'high' ? 'bad' : 'draft'}">${esc(i.severity)}</span> ${esc(i.where ? i.where + ': ' : '')}${esc(i.issue)}</li>`).join('')}</ul></div>`;
+  return h;
+}
+
+async function pNewCase() {
+  crumbs([['Case library', '#/library'], ['New case']]);
+  await side('library');
+  view(`
+    <div class="head"><div><h1>New case</h1><p class="lede">Describe the patient in a few lines. A deep agent plans the case, writes it, fixes anything the code check rejects, gets reviews from its sub-agents, and asks you to approve it.</p></div></div>
+    <div class="split">
+      <div>
+        <div class="card">
+          <label for="g-title" style="margin-top:0">Title</label><input type="text" id="g-title" placeholder="Rosa: COPD flare">
+          <label for="g-notes">About the patient</label>
+          <textarea id="g-notes" placeholder="62-year-old woman with COPD, third admission this year. Says she quit smoking but still smokes on the porch. Uses her inhaler wrong. Son Luis manages her medicines and speaks Spanish."></textarea>
+          <div class="err" id="g-err"></div>
+          <button class="btn" id="g-go">Draft case with AI</button>
+        </div>
+        <div class="card" style="margin-top:18px">
+          <h3>Or upload a case file</h3>
+          <p class="small muted" style="margin:4px 0 0">A case as JSON. It's checked the same way and saved as a draft.</p>
+          <label for="u-file">Case file (.json)</label><input type="file" id="u-file" accept=".json,application/json">
+          <div class="err" id="u-err"></div>
+          <button class="btn ghost" id="u-go">Upload case</button><div id="u-out"></div>
+        </div>
+      </div>
+      <div class="card" id="g-panel"><h3>The agent's work</h3><p class="small muted" style="margin:4px 0 0">Its plan, every step, the files it writes, and its sub-agents' reviews show up here.</p><div id="g-out"></div></div>
+    </div>`);
+  $('#g-notes').oninput = () => $('#g-err').textContent = '';
+  $('#g-go').onclick = async () => {
+    const notes = $('#g-notes').value.trim(), title = $('#g-title').value.trim();
+    if (notes.length < 15) { $('#g-err').textContent = 'Write a few lines about the patient first.'; $('#g-notes').focus(); return; }
+    const b = $('#g-go'); b.disabled = true; b.innerHTML = '<span class="spin"></span> Working…';
+    const v = agentView($('#g-out'), s => {
+      $('#g-out').insertAdjacentHTML('beforeend', `<div class="row" style="margin-top:12px"><a class="btn small" href="key.html?case=${encodeURIComponent(s.case_id)}">Open the answer key</a><a class="btn ghost small" href="#/library">Back to the library</a></div>${reviewHtml(s.review, s.validation)}`);
+      state.cases = []; toast('Case drafted');
+    });
+    try { await stream('/cases/agent', { notes, title: title || null }, ev => v.on(ev)); } catch (e) { $('#g-err').textContent = e.message; }
+    b.disabled = false; b.textContent = 'Draft case with AI';
+  };
+  $('#u-file').onchange = () => $('#u-err').textContent = '';
+  $('#u-go').onclick = async () => {
+    const f = $('#u-file').files[0]; $('#u-err').textContent = '';
+    if (!f) { $('#u-err').textContent = 'Choose a .json file first.'; return; }
+    let json; try { json = JSON.parse(await f.text()); } catch { $('#u-err').textContent = "That file isn't valid JSON."; return; }
+    try { const r = await api('POST', '/cases/upload', { case: json }); $('#u-out').innerHTML = `<p><b>${esc(r.case.title)}</b> uploaded as a draft.</p>${reviewHtml(null, r.validation)}`; state.cases = []; toast('Case uploaded'); }
+    catch (e) { $('#u-err').textContent = e.message; }
+  };
+}
+
+/* Renders a deep-agent run: live plan, steps, sub-agents, files, and the approval step. */
+function agentView(box, onSaved) {
+  box.innerHTML = `<div class="agent-plan"></div><ul class="steps-live"></ul><div class="agent-files"></div><div class="agent-approve"></div>`;
+  const ul = box.querySelector('.steps-live'), planBox = box.querySelector('.agent-plan'), filesBox = box.querySelector('.agent-files'), approveBox = box.querySelector('.agent-approve');
+  let saved = null, runId = null;
+  const done = () => ul.querySelectorAll('.spin').forEach(s => s.outerHTML = '✓');
+  const add = (ic, cls, html, live) => { done(); const li = document.createElement('li');
+    li.innerHTML = `<span class="ic ${cls}">${live ? '<span class="spin" style="width:11px;height:11px"></span>' : ic}</span><span>${html}</span>`; ul.appendChild(li); };
+  const showFiles = files => { if (files && files.length) filesBox.innerHTML = `<b class="small">Agent workspace</b>` + files.map(f => `<details><summary><code>${esc(f.path)}</code> <span class="muted small">${f.size} bytes</span></summary><pre>${esc(f.content)}</pre></details>`).join(''); };
+  const v = { on(ev) {
+    if (ev.type === 'run') runId = ev.run_id;
+    else if (ev.type === 'plan') planBox.innerHTML = '<b class="small">Plan</b><ol>' + ev.items.map(i => { const it = typeof i === 'string' ? { text: i, status: 'pending' } : i; return `<li class="${esc(it.status)}">${esc(it.text)}</li>`; }).join('') + '</ol>';
+    else if (ev.type === 'subagent') add('', 'plan', '<b>' + esc(ev.label) + '</b>', true);
+    else if (ev.type === 'file') add('', '', `${esc(ev.label.split(' ')[0])} <code>${esc(ev.path)}</code>`, true);
+    else if (ev.type === 'tool') add('', '', esc(ev.label), true);
+    else if (ev.type === 'result') add(ev.ok ? '✓' : '✗', ev.ok ? 'ok' : 'no', ev.ok ? 'Structure check passed' : 'Structure check rejected it: ' + esc(ev.errors.join('; ')));
+    else if (ev.type === 'review') add('✎', 'plan', esc(ev.text));
+    else if (ev.type === 'error') add('!', 'no', esc(ev.message));
+    else if (ev.type === 'approval') {
+      done(); runId = ev.run_id || runId; showFiles(ev.files);
+      approveBox.innerHTML = `<div class="approve-card"><b>The agent wants to save ${esc(ev.title || 'this case')}</b>
+        <p class="small" style="margin:4px 0 8px">${esc(ev.summary || '')}</p>
+        <p class="muted small" style="margin:0 0 8px">Read the draft and the reviews in the workspace above. Approve it, or send it back with a note. The agent remembers your note for future cases.</p>
+        <textarea class="ap-note" placeholder="Make the son speak Spanish, and make the smoking harder to uncover." style="min-height:60px"></textarea>
+        <div class="err ap-err"></div>
+        <div class="row"><button class="btn small ap-yes">Approve and save</button><button class="btn ghost small ap-no">Send back with note</button></div></div>`;
+      const go = async approve => {
+        const note = approveBox.querySelector('.ap-note').value.trim();
+        if (!approve && !note) { approveBox.querySelector('.ap-err').textContent = 'Say what to change.'; return; }
+        approveBox.innerHTML = '';
+        try { await stream(`/cases/agent/${runId}/decision`, { approve, note }, e => v.on(e)); } catch (e) { add('!', 'no', esc(e.message)); }
+      };
+      approveBox.querySelector('.ap-yes').onclick = () => go(true);
+      approveBox.querySelector('.ap-no').onclick = () => go(false);
+    }
+    else if (ev.type === 'saved') { saved = ev; done(); showFiles(ev.files); add('✓', 'ok', `<b>${esc(ev.title)}</b> saved as a draft.`); if (onSaved) onSaved(ev); }
+  }, get saved() { return saved; } };
+  return v;
+}
+
+/* ======================= student ======================= */
+function sSignIn() {
+  crumbs([]); $('#side').innerHTML = '<a href="#/" class="on">🏫 Classes</a>';
+  view(`<div class="card" style="max-width:440px;margin:40px auto">
+    <h1>Sign in</h1><p class="lede">Use your NetID. Your professor sees your results under it.</p>
+    <label for="s-netid">NetID</label><input type="text" id="s-netid" placeholder="abc123" autocomplete="username">
+    <div class="err" id="s-err"></div><button class="btn" id="s-go">Continue</button></div>`);
+  const go = () => {
+    const v = $('#s-netid').value.trim().toLowerCase();
+    if (!/^[a-z0-9_-]{2,20}$/.test(v)) { $('#s-err').textContent = 'Use 2 to 20 letters or numbers.'; $('#s-netid').focus(); return; }
+    state.netid = v; localStorage.setItem('rounds.netid', v); route();
+  };
+  $('#s-go').onclick = go; $('#s-netid').onkeydown = e => { if (e.key === 'Enter') go(); };
+  $('#s-netid').oninput = () => $('#s-err').textContent = ''; $('#s-netid').focus();
+}
+
+async function sHome() {
+  crumbs([]);
+  const classes = await api('GET', `/classes?student_id=${encodeURIComponent(state.netid)}`);
+  await side('home', classes);
+  view(`
+    <div class="head"><div><h1>Your classes</h1><p class="lede">Signed in as <b>${esc(state.netid)}</b>. <a href="#" id="s-out">Switch</a></p></div>
+      <button class="btn" id="j-open">+ Join class</button></div>
+    <div class="card" id="j-form" ${classes.length ? 'hidden' : ''} style="max-width:460px;margin-bottom:18px">
+      <h3>Join a class</h3><label for="j-code">Class code from your professor</label>
+      <div class="row"><input type="text" id="j-code" placeholder="7DNT7J" style="flex:1;text-transform:uppercase"><button class="btn" id="j-go">Join</button></div>
+      <div class="err" id="j-err"></div></div>
+    <div class="classes">${classes.slice().reverse().map(c => `
+      <a class="cls" href="#/class/${esc(c.id)}">
+        <div class="banner" style="background:${color(c.id)}"><b>${esc(c.name)}</b><span>${esc(c.section || '')}</span></div>
+        <div class="meta"><span>${c.assignment_count} assignment${c.assignment_count === 1 ? '' : 's'}</span></div></a>`).join('')}</div>`);
+  $('#s-out').onclick = e => { e.preventDefault(); localStorage.removeItem('rounds.netid'); state.netid = ''; route(); };
+  $('#j-open').onclick = () => { $('#j-form').hidden = false; $('#j-code').focus(); };
+  $('#j-code').oninput = () => $('#j-err').textContent = '';
+  $('#j-go').onclick = async () => {
+    const code = $('#j-code').value.trim();
+    if (!code) { $('#j-err').textContent = 'Enter the class code.'; return; }
+    try { const c = await api('POST', '/classes/join', { code, student_id: state.netid }); toast(`Joined ${c.name}`); location.hash = `#/class/${c.id}`; }
+    catch (e) { $('#j-err').textContent = e.message; }
+  };
+}
+
+async function sClass(cid) {
+  const [cls, mine] = await Promise.all([api('GET', `/classes/${cid}`), api('GET', `/assignments?student_id=${encodeURIComponent(state.netid)}`)]);
+  await side(cid);
+  crumbs([[cls.name]]);
+  const here = mine.filter(a => a.class_id === cid);
+  const todo = here.filter(a => !a.done), done = here.filter(a => a.done);
+  const row = a => `<div class="item">
+      <span class="ico" style="background:${color(cid)}22;color:${color(cid)}">📋</span>
+      <div class="grow"><div class="title">${esc(a.title)} ${a.student_id ? '<span class="pill info">Just for you</span>' : ''}</div>
+        <div class="muted small">${a.due ? 'Due ' + esc(fmtDate(a.due)) : 'No due date'}${a.done ? ` · ${esc(a.score)} key facts made it home` : ''}</div>
+        ${(a.focus || []).length ? `<div style="margin-top:4px"><span class="small muted">Practice next: </span>${a.focus.map(f => `<span class="focus" title="${esc(f.why)}">${esc(f.skill)}</span>`).join('')}</div>` : ''}</div>
+      <a class="btn ${a.done ? 'ghost' : ''} small" href="${roundsUrl({ assignment: a.id, student: state.netid })}">${a.done ? 'Try again' : 'Start rounds'}</a></div>`;
+  view(`
+    <div class="cbanner" style="background:${color(cid)}"><div><h1>${esc(cls.name)}</h1><p>${esc(cls.section || '')}</p></div></div>
+    <div class="section"><h2>To do</h2><div class="card"><div class="list">${todo.length ? todo.map(row).join('') : '<div class="empty">All caught up.</div>'}</div></div></div>
+    <div class="section"><h2>Done</h2><div class="card"><div class="list">${done.length ? done.map(row).join('') : '<div class="empty">Nothing finished yet.</div>'}</div></div></div>`);
+}
+
+/* ======================= boot ======================= */
+(async () => {
+  try { await api('GET', '/health'); $('#mode').textContent = 'Live API'; $('#mode').className = 'mode live'; }
+  catch { $('#mode').textContent = 'Server offline'; $('#mode').className = 'mode down'; $('#mode').title = 'Start it with: uvicorn backend.app:app --reload'; }
+  if (params.get('role') === 'student') { state.role = 'student'; localStorage.setItem('rounds.role', 'student'); }
+  route();
+})();
+</script>
+</body>
+</html>
