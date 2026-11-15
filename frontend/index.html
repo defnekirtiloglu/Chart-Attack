@@ -200,6 +200,8 @@ main{max-width:1200px;margin:0 auto;padding:28px 24px 60px}
 @keyframes ring{0%{box-shadow:0 0 0 0 rgba(229,72,77,.55)}100%{box-shadow:0 0 0 16px rgba(229,72,77,0)}}
 .ask.voice input,.ask.voice .send{display:none}
 .ask:not(.voice):not(.mic-too) .talk{display:none}
+.type-instead{border:0;background:none;color:inherit;opacity:.7;font-size:13px;text-decoration:underline;cursor:pointer;white-space:nowrap;padding:0 6px}
+.ask:not(.voice) .type-instead{display:none}
 .ask.mic-too .talk{flex:0 0 52px;padding:0}
 .ask.mic-too .talk span{display:none}
 .history .h.interim{font-style:italic;opacity:.75}
@@ -342,7 +344,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 24px 60px}
   <section class="screen" id="s-portal">
     <div class="screen-head">
       <div>
-        <h1>Your assignments</h1>
+        <h1>Practice a case</h1>
         <p>Pick a patient. Each case follows one patient from the ED, through a handoff, to discharge home.</p>
       </div>
     </div>
@@ -611,7 +613,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 24px 60px}
 </main>
 
 <div class="toast" id="toast"></div>
-
+<script src="portal-hook.js"></script>
 <script>
 /* =============================================================================
    Config
@@ -828,9 +830,7 @@ let edInterim = '';
 function renderEdHistory(waiting) {
   const h = $('#ed-history');
   const lastW = state.edLog.map(m => m.who).lastIndexOf('walter');
-  h.innerHTML = state.edLog.map((m, i) =>
-    `<div class="h ${m.who}${i === lastW && i === state.edLog.length - 1 ? ' latest' : ''}"><b>${m.who === 'walter' ? 'Walter' : 'You'}:</b> ${esc(m.text)}</div>`).join('')
-    + (edInterim ? `<div class="h me interim"><b>You:</b> ${esc(edInterim)}…</div>` : '')
+  h.innerHTML = ''   // voice only: no captions for you or for Walter
     + (waiting ? '<div class="h wait">Walter is thinking…</div>' : '');
   h.scrollTop = h.scrollHeight;
 }
@@ -967,14 +967,11 @@ let dcInterim = '';
 function renderTurns() {
   const box = $('#turns'), c = state.caregiver, last = state.turns.length - 1;
   box.innerHTML = state.turns.map((t, i) => `
-    <div class="h me"><b>You:</b> ${esc(t.text)}</div>
-    ${t.interp ? `<div class="h interp-line"><b>Interpreter → ${esc(c.languageName)}:</b> ${esc(t.interp)}</div>` : ''}
+    ${t.interp && !t.interp.startsWith('[') ? `<div class="h interp-line"><b>Interpreter → ${esc(c.languageName)}:</b> ${esc(t.interp)}</div>` : ''}
     ${t.check && t.check.status === 'flagged' ? `<div class="flag"><b>Translation flagged.</b> ${esc(t.check.issues.join('; '))}${t.check.back_translation ? `<br>She actually heard: "${esc(t.check.back_translation)}"` : ''}</div>` : ''}
-    ${t.check && t.check.status === 'unchecked' ? `<div class="flag soft">Translation not verified (checker offline).</div>` : ''}
     ${t.tooLong ? `<div class="flag soft">Too long for her. Try shorter sentences.</div>` : ''}
     ${t.pending ? `<div class="h wait">${esc(c.name)} is thinking…</div>`
-      : `<div class="h cg${i === last ? ' latest' : ''}"><b>${esc(c.name)}:</b> ${esc(t.reply)}${t.en ? `<div class="gloss">${esc(t.en)}</div>` : ''}</div>`}`).join('')
-    + (dcInterim ? `<div class="h me interim"><b>You:</b> ${esc(dcInterim)}…</div>` : '');
+      : `<div class="h cg${i === last ? ' latest' : ''}"><b>${esc(c.name)}:</b> ${esc(t.reply)}${t.en ? `<div class="gloss">${esc(t.en)}</div>` : ''}</div>`}`).join('');   // your own words are not shown
   box.scrollTop = box.scrollHeight;
 }
 
@@ -1195,7 +1192,12 @@ function pushToTalk({ btn, form, input, onInterim }) {
     if (why) toast(why, true);
     input.focus();
   };
-  if (!SR) { useTyping(); return { start() {}, stop() {} }; }
+  // Safety net for noisy rooms: a small "Type instead" switch next to the mic.
+  const typeBtn = document.createElement('button');
+  typeBtn.type = 'button'; typeBtn.className = 'type-instead'; typeBtn.textContent = 'Type instead';
+  typeBtn.onclick = () => { useTyping(null, true); typeBtn.remove(); };
+  form.appendChild(typeBtn);
+  if (!SR) { useTyping(); typeBtn.remove(); return { start() {}, stop() {} }; }
   let rec = null, heard = '';
   function start(e) {
     e?.preventDefault?.();
@@ -1265,6 +1267,17 @@ setInterval(() => {
   const m = $('#mode');
   if (!MOCK) { m.textContent = 'Live API'; m.classList.add('live'); m.title = API; }
   else m.title = 'Running on built-in mock data. Remove ?mock from the URL to use the backend';
+  const direct = params.get('assignment') || params.get('case');
+  if (direct && !MOCK) {
+    // Opened from the portal: skip the picker. portal-hook.js adds assignment_id / student_id to POST /session.
+    go('portal');
+    $('#cases').innerHTML = '<p class="muted">Starting your case…</p>';
+    await new Promise(r => setTimeout(r));   // let the rest of this script load first
+    casesFromBackend = true;                 // the server knows this case; skip the demo-list check
+    await startCase(params.get('case') || 'walter', { disabled: false, textContent: '' });
+    if (!state.id) loadCases();
+    return;
+  }
   go('portal');
   loadCases();
 })();
@@ -1297,17 +1310,18 @@ async function loadCases() {
   } catch { cases = DEMO_CASES; casesFromBackend = false; }
   const langName = code => { try { const n = new Intl.DisplayNames([code], { type: 'language' }).of(code); return n.charAt(0).toLocaleUpperCase(code) + n.slice(1); } catch { return code; } };
   $('#cases').innerHTML = cases.map((c, i) => {
-    const initials = (c.initials || c.name.split(/\s+/).map(w => w[0]).join('')).slice(0, 2).toUpperCase();
+    const name = c.name || c.patient?.name || c.title || 'Patient';
+    const initials = (c.initials || String(name).split(/\s+/).map(w => w[0]).join('')).slice(0, 2).toUpperCase();
     const tags = [...(c.tags || []),
       ...(c.caregiver_language ? [`Caregiver: ${langName(c.caregiver_language)}`] : []),
       ...(c.minutes ? [`~${c.minutes} min`] : [])];
     return `<article class="card case ready">
       <div class="case-top">
         <div class="avatar" style="background:${CASE_COLORS[i % CASE_COLORS.length]};color:#fff">${esc(initials)}</div>
-        <div><h3>${esc(c.name)}</h3><div class="sub">${esc(c.age)} ${esc(c.sex || '')}${c.location ? ' · ' + esc(c.location) : ''}</div></div>
+        <div><h3>${esc(name)}</h3><div class="sub">${esc(c.age ?? c.patient?.age ?? '')} ${esc(c.sex || '')}${c.location ? ' · ' + esc(c.location) : ''}</div></div>
         ${c.due ? `<span class="badge ready">${esc(c.due)}</span>` : ''}
       </div>
-      <p class="cc">${esc(c.chief_complaint)}</p>
+      <p class="cc">${esc(c.chief_complaint || c.title || '')}</p>
       ${c.route ? `<div class="route">${c.route.map(esc).join(' <i>→</i> ')}</div>` : ''}
       <div class="tags">${tags.map(t => `<span>${esc(t)}</span>`).join('')}</div>
       <button class="btn" data-case="${esc(c.id)}">Start case →</button>
@@ -1328,7 +1342,8 @@ async function startCase(caseId, btn) {
     state.caregiver = normCaregiver(r.caregiver || r.case?.caregiver || r.patient?.caregiver);
     renderCaregiver();
     const p = r.patient || r.case?.patient;
-    if (p) $('#chart-meta').textContent = `${p.name || 'Walter B.'} · ${p.age || 72} ${p.sex || 'M'} · CC: ${p.chief_complaint || 'shortness of breath'}`;
+    const sex = p && ({ male: 'M', female: 'F' }[String(p.sex).toLowerCase()] || p.sex || '');
+    if (p) $('#chart-meta').textContent = `${p.name || 'Patient'} · ${p.age || ''} ${sex} · CC: ${p.chief_complaint || r.case?.chief_complaint || r.case?.title || ''}`;
     await refreshSession(); renderChart(); renderChecklist();
     t0 = Date.now();
     go('ed');
