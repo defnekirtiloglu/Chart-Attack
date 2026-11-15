@@ -1,11 +1,11 @@
 """OSCEnario Rounds API. Run:  uvicorn backend.app:app --reload  (from the repo root)"""
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from . import engine
+from . import engine, llm
 
 app = FastAPI(title="OSCEnario Rounds")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -78,3 +78,19 @@ def teachback(sid: str):
 @app.get("/session/{sid}/feedback")
 def feedback(sid: str):
     return engine.feedback(session(sid))
+
+
+class SpeakIn(BaseModel):
+    text: str
+    voice: str = "walter"      # walter | ayse | okafor
+    language: Optional[str] = None
+
+
+@app.post("/tts")
+def tts(body: SpeakIn):
+    """ElevenLabs voice. The key stays on the server; the front end gets audio/mpeg."""
+    lang = body.language or ("tr" if body.voice == "ayse" else "en")
+    audio = llm.speak(body.text, body.voice, lang)
+    if audio is None:
+        raise HTTPException(503, "Voice is offline. Check ELEVENLABS_API_KEY, or show the text instead.")
+    return Response(content=audio, media_type="audio/mpeg")
