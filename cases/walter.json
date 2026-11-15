@@ -43,28 +43,32 @@
       "label": "Skips his water pill (furosemide) on bowling days, Tue and Thu",
       "tier": "reluctant",
       "critical": true,
-      "says": "Fine. I skip the water pill on bowling days. You try rolling a 200 game running to the john every ten minutes."
+      "says": "Fine. I skip the water pill on bowling days. You try rolling a 200 game running to the john every ten minutes.",
+      "short": "Skips his water pill"
     },
     {
       "id": "ibuprofen",
       "label": "Takes ibuprofen most days for a bad right knee",
       "tier": "asked",
       "critical": true,
-      "says": "Couple of those orange ibuprofens most days for the knee. Bad knee from forty years on a concrete shop floor."
+      "says": "Couple of those orange ibuprofens most days for the knee. Bad knee from forty years on a concrete shop floor.",
+      "short": "Ibuprofen for his knee"
     },
     {
       "id": "salt",
       "label": "High-salt diet: canned soup and deli meat at the bowling alley; Ayşe cooks low salt at home",
       "tier": "reluctant",
       "critical": true,
-      "says": "Ayşe cooks healthy, I'll give her that. But at the lanes it's a ham sandwich and a can of soup. Don't tell her."
+      "says": "Ayşe cooks healthy, I'll give her that. But at the lanes it's a ham sandwich and a can of soup. Don't tell her.",
+      "short": "Salty bowling-alley lunches"
     },
     {
       "id": "wife_pills",
       "label": "Wife Ayşe fills his pill box; she reads little English and speaks Turkish",
       "tier": "asked",
       "critical": true,
-      "says": "Ayşe does the pill box every Sunday. Her English reading isn't great, so she goes by the color of the pills mostly."
+      "says": "Ayşe does the pill box every Sunday. Her English reading isn't great, so she goes by the color of the pills mostly.",
+      "short": "Ayşe runs the pill box"
     },
     {
       "id": "no_scale",

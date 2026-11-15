@@ -76,7 +76,10 @@ class Session:
             "session_id": self.id,
             "case": {"id": self.case["id"], "title": self.case["title"], "disclaimer": self.case["disclaimer"],
                      "patient": {k: self.case["patient"][k] for k in ("name", "age", "sex", "language")},
-                     "caregiver": {k: self.case["caregiver"][k] for k in ("name", "relation", "language")}},
+                     "caregiver": {"name": self.case["caregiver"]["name"], "relation": self.case["caregiver"]["relation"],
+                                   "language": "tr", "language_name": "Türkçe"}},
+            "facts": [{"id": c["id"], "label": c["label"], "status": "found", "tone": "bad" if c["critical"] else "good"}
+                      for c in self.chart()],
             "stage": self.stage,
             "encounter": enc.get(self.stage),
             "encounters": self.case["encounters"],
@@ -479,7 +482,7 @@ def feedback(s: Session) -> dict:
         ]
         check = steps[1:] if rescued else steps
         lost_at = next((st["stage"] for st in check if not st["ok"]), None)
-        threads.append({"id": f["id"], "label": f["label"], "steps": steps, "lost_at": lost_at,
+        threads.append({"id": f["id"], "label": f["label"], "short": f.get("short", f["label"]), "steps": steps, "lost_at": lost_at,
                         "rescued_by": "pharmacist" if rescued else None,
                         "consequence": None if lost_at is None else s.case["plan"]["missed_consequence"].get(f["id"])})
     base_ids = [p["id"] for p in s.case["plan"]["base"]]
@@ -493,6 +496,6 @@ def feedback(s: Session) -> dict:
         "standard_points_total": len(base_ids),
         "jargon_used": sorted({w for p in s.points.values() for w in p.get("jargon", [])}),
         "translation_flags": [{"said": t["text"], **t["translation_check"]} for t in s.transcript
-                              if t.get("translation_check", {}).get("status") == "flagged"],
+                              if (t.get("translation_check") or {}).get("status") == "flagged"],
         "teachback": s.teachback,
     }

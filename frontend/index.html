@@ -113,6 +113,12 @@ main{max-width:1200px;margin:0 auto;padding:28px 24px 60px}
 .video-top .who{font-weight:600;font-size:16px}.video-top .sub{font-size:12px;color:#d0c8bb}
 .voice-btn{border:0;background:rgba(0,0,0,.4);color:#fff;border-radius:999px;width:34px;height:34px;font-size:15px}
 .voice-btn.on{background:var(--walter)}
+.flag{margin:6px 0;padding:8px 10px;border:1.5px solid #cf3b2f;border-radius:10px;background:#fdecea;color:#7a1f17;font-size:14px}
+.flag.soft{border-color:#c7791a;background:#fdf4e6;color:#6b4208}
+.interp-toggle{display:flex;gap:8px;align-items:center;justify-content:flex-start;width:100%;font-size:14px;color:#5d574c;margin:0 0 8px;cursor:pointer}
+.interp-toggle input{flex:none;width:16px;height:16px;margin:0;padding:0}
+.rescued{font-size:12px;font-weight:500;color:#7c6ee6}
+.say.pharm{border-left:3px solid #7c6ee6;padding-left:10px;font-style:normal}
 .pip{position:absolute;right:12px;bottom:12px;width:74px;height:96px;border-radius:10px;background:#3a3732;border:2px solid rgba(255,255,255,.25);overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end}
 .pip svg{width:100%;height:auto}.pip span{position:absolute;left:6px;top:4px;font-size:10px;color:#ddd}
 #head-g{animation:breathe 4.5s ease-in-out infinite}
@@ -428,6 +434,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 24px 60px}
     <div class="turns" id="turns"><div class="turn-empty">Start with the most important thing they need to do at home.</div></div>
     <form class="compose" id="dc-form" autocomplete="off">
       <div class="jargon" id="jargon">⚠️ <span></span></div>
+      <label class="interp-toggle"><input type="checkbox" id="use-interp"> Use the Turkish interpreter</label>
       <div class="row">
         <input id="dc-input" placeholder='e.g. "Weigh him every morning before breakfast."' aria-label="Explain to the caregiver">
         <button type="button" class="icon-btn mic" title="Speak" aria-label="Speak">
@@ -470,7 +477,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 24px 60px}
    Config
 ============================================================================= */
 const params = new URLSearchParams(location.search);
-const API = (params.get('api') || window.WALTER_API || '').replace(/\/$/, '');
+const API = params.has('mock') ? '' : (params.get('api') || window.WALTER_API || 'http://127.0.0.1:8000').replace(/\/$/, '');
 const MOCK = !API;
 const STAGES = ['ed', 'handoff', 'discharge', 'feedback'];
 const $ = s => document.querySelector(s);
@@ -481,7 +488,7 @@ const state = {
   id: null, stage: 'ed', reached: 0,
   facts: [], hidden: 0, edLog: [],
   handoffDone: false,
-  turns: [], checklist: [],
+  turns: [], checklist: [], taught: false,
 };
 
 /* Plain-language swaps. Used client-side for the live "jargon catch" while typing. */
@@ -530,25 +537,30 @@ function normFacts(r) {
 function normChecklist(list) {
   return (list || []).map(c => ({
     id: c.id ?? c.label, label: c.label || c.text || c.id,
-    status: c.status || (c.done || c.understood ? 'ok' : 'pending'), note: c.note || c.reason || '',
+    label: c.label || c.point || c.text || c.id,
+    status: c.status || (c.clear || c.done || c.understood ? 'ok' : (c.covered ? 'warn' : 'pending')),
+    note: c.note || c.reason || ((c.jargon || []).length ? 'didn\'t follow: ' + c.jargon.join(', ') : (c.covered && !c.clear ? 'not clear yet' : '')),
   }));
 }
 function normChat(r) {
   return {
     speaker: r.speaker || r.role || null,
-    text: r.reply || r.text || r.message || r.response || '',
+    text: r.reply || r.reply_tr || r.text || r.message || r.response || '',
     en: r.reply_en || r.translation || r.english || r.text_en || '',
-    interp: r.interpreter_tr || r.interpreter || r.translated_input || r.input_tr || '',
+    interp: r.interpreted_tr || r.interpreter_tr || (typeof r.interpreter === 'string' ? r.interpreter : '') || r.translated_input || '',
+    check: r.translation_check || null, tooLong: !!r.too_long,
     unlocked: (r.unlocked || r.unlocked_facts || r.new_facts || []).map(u => typeof u === 'object' ? (u.id ?? u.label) : u),
-    checklist: r.checklist ? normChecklist(r.checklist) : null,
-    jargon: (r.jargon || r.jargon_flags || []).map(j => typeof j === 'string' ? { term: j, plain: JARGON[j.toLowerCase()] || '' } : j),
+    checklist: (r.checklist || r.points) ? normChecklist(r.checklist || r.points) : null,
+    jargon: (r.jargon || r.jargon_flags || [...new Set((r.points || []).flatMap(p => p.jargon || []))]).map(j => typeof j === 'string' ? { term: j, plain: JARGON[j.toLowerCase()] || '' } : j),
   };
 }
 function normHandoff(r) {
   return {
     reply: r.reply || r.reaction || r.message || r.response || '',
     question: r.follow_up || r.follow_up_question || r.question || '',
-    missing: (r.missing || r.missing_facts || r.gaps || []).map(m => typeof m === 'object' ? (m.label || m.text || m.id) : m),
+    missing: (r.missing || r.missing_critical || r.missing_facts || r.gaps || []).map(m => typeof m === 'object'
+      ? (m.label || m.text || m.id) + (m.why ? ` (${m.why})` : '') : m),
+    pharmacist: r.pharmacist || null,
   };
 }
 const STAGE_ALIASES = { ed:'ed', er:'ed', interview:'ed', handoff:'handoff', sbar:'handoff', cardiology:'handoff', home:'home', discharge:'home', teaching:'home' };
@@ -556,14 +568,18 @@ const GOOD = new Set(['found','handed_off','handedoff','passed','used','ok','und
 function normFeedback(r) {
   const threads = (r.threads || []).map(t => ({
     id: t.id ?? t.fact_id ?? t.label,
-    label: t.label || t.fact || t.name || t.id,
+    label: t.short || t.label || t.fact || t.name || t.id, full: t.label || '', rescued: t.rescued_by || null,
     steps: (t.steps || []).map(s => ({
       stage: STAGE_ALIASES[String(s.stage).toLowerCase()] || s.stage,
-      good: typeof s.status === 'boolean' ? s.status : GOOD.has(String(s.status).toLowerCase()),
-      status: String(s.status), note: s.note || s.detail || '',
+      good: typeof s.ok === 'boolean' ? s.ok : typeof s.status === 'boolean' ? s.status : GOOD.has(String(s.status).toLowerCase()),
+      status: typeof s.ok === 'boolean' ? (s.note || (s.ok ? 'ok' : 'lost')) : String(s.status),
+      note: typeof s.ok === 'boolean' ? '' : (s.note || s.detail || ''),
     })),
   }));
-  return { threads, summary: r.summary || r.headline || '' };
+  const summary = r.summary || r.headline || (r.total_threads != null
+    ? `${r.carried_home} of ${r.total_threads} key facts made it all the way home. You found ${r.facts_found} of ${r.facts_total} things Walter could tell you.`
+      + ((r.translation_flags || []).length ? ` The interpreter changed ${r.translation_flags.length} of your instructions.` : '') : '');
+  return { threads, summary };
 }
 
 /* =============================================================================
@@ -586,7 +602,22 @@ function go(stage) {
 $$('.step').forEach(b => b.onclick = () => go(b.dataset.s));
 $('#to-handoff').onclick = () => go('handoff');
 $('#to-discharge').onclick = () => go('discharge');
-$('#to-feedback').onclick = () => go('feedback');
+$('#to-feedback').onclick = async () => {
+  if (state.taught || MOCK) return go('feedback');
+  await teachback(true);
+};
+async function teachback(show) {
+  const btn = $('#to-feedback');
+  const turn = { text: 'Can you tell me, in your own words, what you\'ll do at home?', pending: true, interp: '', reply: '', en: '' };
+  if (show) { state.turns.push(turn); renderTurns(); btn.disabled = true; }
+  try {
+    const r = await api('POST', `/session/${state.id}/teachback`);
+    state.taught = true;
+    Object.assign(turn, { pending: false, reply: r.tr || r.reply_tr || '', en: r.en || r.reply_en || '' });
+    if (show) { renderTurns(); Voice.speak(turn.reply, 'ayse'); btn.textContent = 'See where the facts went →'; }
+  } catch (err) { turn.pending = false; turn.reply = '…'; if (show) renderTurns(); toast(err.message, true); }
+  btn.disabled = false;
+}
 $('#restart').onclick = () => { location.reload(); };
 
 function toast(msg, err) {
@@ -708,7 +739,9 @@ $('#sbar-form').onsubmit = async e => {
     out.innerHTML =
       (r.reply ? `<div class="say">"${esc(r.reply.replace(/^"|"$/g, ''))}"</div>` : '') +
       (r.question ? `<div class="say q">"${esc(r.question.replace(/^"|"$/g, ''))}"</div>` : '') +
-      (r.missing.length ? `<div class="missing"><h4>Not on the board</h4><ul>${r.missing.map(m => `<li>${esc(m)}</li>`).join('')}</ul></div>` : '');
+      (r.missing.length ? `<div class="missing"><h4>Not on the board</h4><ul>${r.missing.map(m => `<li>${esc(m)}</li>`).join('')}</ul></div>` : '') +
+      (r.pharmacist ? `<div class="say pharm"><b>${esc(r.pharmacist.name)}, pharmacy:</b> ${esc(r.pharmacist.note)}</div>` : '');
+    Voice.speak(r.reply, 'okafor');
     state.handoffDone = true;
     $('#to-discharge').disabled = false;
   } catch (err) { out.innerHTML = '<div class="say wait">Page failed.</div>'; toast(err.message, true); }
@@ -768,7 +801,10 @@ function renderTurns() {
     <div class="turn">
       <div class="you"><span class="lbl">You said</span>"${esc(t.text)}"</div>
       <div class="tr ${t.pending ? 'pending' : ''}">
-        ${t.interp ? `<div class="interp"><span class="lbl">Medical term → translated to ${esc(state.caregiver.languageName)}</span>${esc(t.interp)}</div>` : ''}
+        ${t.interp ? `<div class="interp"><span class="lbl">Interpreter → ${esc(state.caregiver.languageName)}</span>${esc(t.interp)}</div>` : ''}
+        ${t.check && t.check.status === 'flagged' ? `<div class="flag"><b>Translation flagged.</b> ${esc(t.check.issues.join('; '))}${t.check.back_translation ? `<br><span class="lbl">She actually heard</span>"${esc(t.check.back_translation)}"` : ''}</div>` : ''}
+        ${t.check && t.check.status === 'unchecked' ? `<div class="flag soft">Translation not verified (checker offline).</div>` : ''}
+        ${t.tooLong ? `<div class="flag soft">Too long for her. Try shorter sentences.</div>` : ''}
         <span class="lbl">${esc(state.caregiver.name)}</span>
         <div class="ayse">${t.pending ? '<span class="dots">…</span>' : `"${esc(t.reply)}"`}</div>
         ${t.en ? `<div class="gloss">${esc(t.en)}</div>` : ''}
@@ -794,9 +830,10 @@ $('#dc-form').onsubmit = async e => {
   const turn = { text, pending: true, interp: '', reply: '', en: '' };
   state.turns.push(turn); renderTurns();
   try {
-    const r = normChat(await api('POST', `/session/${state.id}/chat`, { text, stage: 'discharge' }));
-    Object.assign(turn, { pending: false, interp: r.interp, reply: r.text, en: r.en });
+    const r = normChat(await api('POST', `/session/${state.id}/chat`, { text, stage: 'discharge', interpreter: $('#use-interp').checked }));
+    Object.assign(turn, { pending: false, interp: r.interp, reply: r.text, en: r.en, check: r.check, tooLong: r.tooLong });
     renderTurns();
+    Voice.speak(r.text, 'ayse');
     if (r.checklist) {
       const prev = Object.fromEntries(state.checklist.map(c => [c.id, c.status]));
       state.checklist = r.checklist;
@@ -812,6 +849,7 @@ $('#dc-form').onsubmit = async e => {
 const LINE_COLORS = ['#1f9d6b', '#7c6ee6', '#e2603a', '#2b8fd6', '#c7791a', '#d14d8b', '#5a9e2f', '#8a6d3b'];
 
 async function loadFeedback() {
+  if (!state.taught && !MOCK) await teachback(false);
   $('#subway').innerHTML = '<text x="450" y="150" text-anchor="middle" fill="#8d877b" font-size="15">Tracing every fact…</text>';
   try {
     const fb = normFeedback(await api('GET', `/session/${state.id}/feedback`));
@@ -820,7 +858,7 @@ async function loadFeedback() {
     $('#fb-summary').textContent = fb.summary || `${home} of ${fb.threads.length} key facts made it all the way home.`;
     $('#threads').innerHTML = fb.threads.map((t, i) => `
       <div class="card thread">
-        <div class="t"><i style="background:${LINE_COLORS[i % LINE_COLORS.length]}"></i>${esc(t.label)}</div>
+        <div class="t"><i style="background:${LINE_COLORS[i % LINE_COLORS.length]}"></i>${esc(t.full || t.label)}${t.rescued ? ' <span class="rescued">caught by the pharmacist</span>' : ''}</div>
         <ol>${t.steps.map(s => `<li class="${s.good ? 'good' : 'bad'}">${esc(stageName(s.stage))}: ${esc(s.status.replace(/_/g, ' '))}${s.note ? `, ${esc(s.note)}` : ''}</li>`).join('')}</ol>
       </div>`).join('');
   } catch (err) { toast(err.message, true); }
@@ -844,7 +882,18 @@ function drawSubway(threads) {
     const firstBad = steps.findIndex(st => !st.good);
     const title = `<title>${esc(t.label)}: ${steps.map(st => stageName(st.stage) + ' ' + st.status).join(' → ')}</title>`;
     let g = '';
-    if (firstBad === 0) {
+    const rescued = firstBad === 0 && steps.length > 1 && steps[1].good;
+    if (rescued) {
+      // missed in the ED, then caught by the pharmacist: dashed to handoff, solid after
+      const rest = steps.slice(1), rb = rest.findIndex(st => !st.good);
+      const endK = rb === -1 ? rest[rest.length - 1].stage : rest[rb].stage, x2 = X[endK];
+      g += `<line x1="${X.ed}" y1="${y}" x2="${X.handoff}" y2="${y}" stroke="${c}" stroke-width="3" stroke-dasharray="4 6"/>`;
+      g += `<line x1="${X.handoff}" y1="${y}" x2="${x2}" y2="${y}" stroke="${c}" stroke-width="7" stroke-linecap="round" class="ln" style="--len:${x2 - X.handoff}"/>`;
+      g += `<circle cx="${X.handoff}" cy="${y}" r="7" fill="${c}" stroke="#fff" stroke-width="2.5"/>`;
+      g += rb === -1 ? `<circle cx="${x2}" cy="${y}" r="9" fill="${c}" stroke="#fff" stroke-width="3"/>` : ring(x2, y);
+      g += `<text class="row-label" x="${x2 + 18}" y="${y + 5}">${esc(t.label)}</text>`;
+      g += `<text class="row-label" x="${X.handoff}" y="${y - 14}" text-anchor="middle" style="font-size:12px;fill:#7c6ee6">pharmacist caught it</text>`;
+    } else if (firstBad === 0) {
       // never found in the ED
       g += `<line x1="${X.ed + 12}" y1="${y}" x2="${X.home}" y2="${y}" stroke="#c9c2b2" stroke-width="2" stroke-dasharray="5 6"/>`;
       g += ring(X.ed, y);
@@ -875,6 +924,39 @@ function drawSubway(threads) {
 const ring = (x, y) => `<circle cx="${x}" cy="${y}" r="9" fill="#fff" stroke="#cf3b2f" stroke-width="3.5"/><line x1="${x - 4}" y1="${y}" x2="${x + 4}" y2="${y}" stroke="#cf3b2f" stroke-width="2.5"/>`;
 
 /* =============================================================================
+   Voices: ElevenLabs through the back end (POST /tts). Keys never touch the browser.
+============================================================================= */
+const Voice = (() => {
+  let on = !MOCK, current = null;
+  function stop() { if (current) { current.pause(); current = null; } if ('speechSynthesis' in window) speechSynthesis.cancel(); }
+  async function speak(text, who, hooks = {}) {
+    if (!on || !text) return false;
+    stop();
+    try {
+      if (MOCK) throw new Error('mock');
+      const res = await fetch(API + '/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voice: who }) });
+      if (!res.ok) throw new Error('voice offline');
+      const a = new Audio(URL.createObjectURL(await res.blob()));
+      current = a;
+      a.onplay = () => hooks.onstart && hooks.onstart();
+      a.onended = a.onerror = () => hooks.onend && hooks.onend();
+      await a.play();
+      return true;
+    } catch (err) {
+      if (who === 'walter' && 'speechSynthesis' in window) {      // fallback: browser voice
+        const u = new SpeechSynthesisUtterance(text);
+        u.pitch = .7; u.rate = .95;
+        u.onstart = () => hooks.onstart && hooks.onstart(); u.onend = u.onerror = () => hooks.onend && hooks.onend();
+        speechSynthesis.speak(u); return true;
+      }
+      return false;
+    }
+  }
+  return { speak, stop, get on() { return on; }, set on(v) { on = v; if (!v) stop(); } };
+})();
+
+/* =============================================================================
    Walter's face: blink, talk, think, "caught"
 ============================================================================= */
 const Face = (() => {
@@ -896,12 +978,9 @@ const Face = (() => {
     return vs.find(v => /daniel|fred|alex|male|guy|george|david/i.test(v.name)) || vs[0];
   }
   function say(text) {
-    if (voice && 'speechSynthesis' in window) {
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.voice = pickVoice(); u.pitch = .7; u.rate = .95;
-      u.onstart = () => flap(true); u.onend = u.onerror = () => flap(false);
-      speechSynthesis.speak(u);
+    if (Voice.on) {
+      Voice.speak(text, 'walter', { onstart: () => flap(true), onend: () => flap(false) })
+        .then(ok => { if (!ok) { flap(true); setTimeout(() => flap(false), Math.min(6500, 900 + text.length * 45)); } });
       return;
     }
     flap(true);
@@ -914,11 +993,9 @@ const Face = (() => {
     if (ms) moodT = setTimeout(() => svg.classList.remove(m), ms);
   }
   const vb = $('#voice-btn');
-  if (!('speechSynthesis' in window)) vb.style.display = 'none';
-  vb.onclick = () => {
-    voice = !voice; vb.classList.toggle('on', voice); vb.textContent = voice ? '🔊' : '🔇';
-    if (!voice) { speechSynthesis.cancel(); flap(false); }
-  };
+  const paint = () => { vb.classList.toggle('on', Voice.on); vb.textContent = Voice.on ? '🔊' : '🔇'; vb.title = Voice.on ? 'Mute voices' : 'Turn voices on'; };
+  paint();
+  vb.onclick = () => { Voice.on = !Voice.on; paint(); if (!Voice.on) flap(false); };
   return { say, mood };
 })();
 
@@ -956,9 +1033,9 @@ setInterval(() => {
   try {
     const r = await api('POST', '/session', {});
     state.id = r.session_id ?? r.id ?? r.sessionId;
-    state.caregiver = normCaregiver(r.caregiver || r.patient?.caregiver);
+    state.caregiver = normCaregiver(r.caregiver || r.case?.caregiver || r.patient?.caregiver);
     renderCaregiver();
-    const p = r.patient;
+    const p = r.patient || r.case?.patient;
     if (p) $('#chart-meta').textContent = `${p.name || 'Walter B.'} · ${p.age || 72} ${p.sex || 'M'} · CC: ${p.chief_complaint || 'shortness of breath'}`;
     await refreshSession(); renderChart(); renderChecklist();
     t0 = Date.now();
