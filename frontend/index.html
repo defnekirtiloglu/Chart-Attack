@@ -7,7 +7,47 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kalam:wght@400;700&family=Permanent+Marker&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+<!--
+================================================================================
+  API CONTRACT (what this frontend expects from the FastAPI backend)
+  Run with:  index.html?api=http://localhost:8000      (no ?api → built-in mock)
+  The normalize*() functions below accept several key names, so small
+  differences in the backend's JSON are fine. Enable CORS in FastAPI:
+     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
+  POST /session
+     → { "session_id": "abc", "patient": {"name":"Walter B.","age":72,"sex":"M"},
+         "caregiver": {"name":"Ayşe","relation":"wife","language":"tr"} }
+       caregiver.language is an ISO code ("tr", "es", "en"…). The UI shows its name automatically
+       (tr → Türkçe, es → Español). "en" hides the interpreter. Nothing is hard-coded in the frontend.
+
+  GET /session/{id}
+     → { "stage": "ed",
+         "facts": [ {"id":"spo2","label":"SpO2 84% RA","status":"found"|"hidden","tone":"good"|"bad"} ],
+         "hidden_count": 3,
+         "checklist": [ {"id":"weigh","label":"Weigh daily","status":"pending"} ] }   // optional
+
+  POST /session/{id}/chat   body: { "text": "...", "stage": "ed" | "discharge" }
+     ED        → { "speaker":"walter", "reply":"Ha. Next question, kid.", "unlocked":["pill"] }
+     discharge → { "speaker":"ayse",
+                   "interpreter":"Onu her sabah tartın.",          // your English, in caregiver.language (omit if no translation)
+                   "reply":"Her sabah tartılsın, tamam.",          // caregiver's teach-back, in their language
+                   "reply_en":"Weigh him every morning, okay.",    // English gloss
+                   "checklist":[{"id":"weigh","label":"Weigh daily","status":"ok"|"warn"|"pending","note":"you said \"diuretic\""}],
+                   "jargon":[{"term":"diuretic","plain":"water pill"}] }
+
+  POST /session/{id}/handoff  body: { "text": "S: ...\nB: ...", "sbar": {"s":"","b":"","a":"","r":""} }
+     → { "reply":"Got it.", "follow_up":"What pain meds is he on?", "missing":["Takes ibuprofen for knee"] }
+
+  GET /session/{id}/feedback
+     → { "threads": [ { "id":"pill", "label":"Water pill",
+                        "steps":[ {"stage":"ed","status":"found"},
+                                  {"stage":"handoff","status":"handed_off"},
+                                  {"stage":"home","status":"lost","note":"said 'diuretic'"} ] } ],
+         "summary": "optional one-liner" }
+     step.status good: found | handed_off | used | ok        bad: missed | never | lost | dropped
+================================================================================
+-->
 <style>
 :root{
   --paper:#f6f2e8; --paper-2:#fffdf8; --ink:#1f1d1a; --ink-2:#5c574e; --ink-3:#8d877b; --rule:#e4ddcc;
@@ -154,6 +194,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 24px 60px}
 /* ---------- Discharge: translator ---------- */
 .split-head{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:8px}
 .split-head div{display:flex;align-items:center;gap:10px;font-weight:600}
+.split-head .avatar{display:grid;place-items:center;justify-content:center}
 .split-head .tag{font-size:12px;font-weight:500;color:var(--ink-3)}
 .turns{display:flex;flex-direction:column;gap:12px;max-height:440px;overflow:auto;padding:4px 2px 4px 0}
 .turn{display:grid;grid-template-columns:1fr 1fr;gap:14px;animation:fade .3s ease}
@@ -341,7 +382,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 24px 60px}
         <h1>Handoff to cardiology</h1>
         <p>Dr. Okafor only knows what you write on the board. Anything you leave out is gone.</p>
       </div>
-      <button class="btn" id="to-discharge" disabled>Go to discharge →</button>
+      <button class="btn" id="to-discharge">Go to discharge →</button>
     </div>
     <div class="handoff">
       <form class="board" id="sbar-form">
@@ -376,19 +417,19 @@ main{max-width:1200px;margin:0 auto;padding:28px 24px 60px}
     <div class="screen-head">
       <div>
         <h1>Discharge teaching</h1>
-        <p>Ayşe runs his pills at home and prefers Turkish. Explain it plainly; the interpreter translates, and she repeats it back.</p>
+        <p id="dc-intro">Explain the plan in plain words. The caregiver repeats it back so you can see what landed.</p>
       </div>
       <button class="btn" id="to-feedback">See where the facts went →</button>
     </div>
     <div class="split-head">
       <div><div class="avatar" style="width:30px;height:30px;font-size:12px;background:#24211d;color:#fff">You</div>You <span class="tag">English</span></div>
-      <div><div class="avatar av-ayse" style="width:30px;height:30px;font-size:12px">AB</div>Ayşe <span class="tag">Türkçe · via interpreter</span></div>
+      <div id="cg-head"><div class="avatar av-ayse" style="width:30px;height:30px;font-size:12px">?</div>Caregiver</div>
     </div>
-    <div class="turns" id="turns"><div class="turn-empty">Start with the most important thing she needs to do at home.</div></div>
+    <div class="turns" id="turns"><div class="turn-empty">Start with the most important thing they need to do at home.</div></div>
     <form class="compose" id="dc-form" autocomplete="off">
       <div class="jargon" id="jargon">⚠️ <span></span></div>
       <div class="row">
-        <input id="dc-input" placeholder='e.g. "Weigh him every morning before breakfast."' aria-label="Explain to Ayşe">
+        <input id="dc-input" placeholder='e.g. "Weigh him every morning before breakfast."' aria-label="Explain to the caregiver">
         <button type="button" class="icon-btn mic" title="Speak" aria-label="Speak">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
         </button>
@@ -397,7 +438,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 24px 60px}
         </button>
       </div>
     </form>
-    <div class="card checklist" id="checklist"><h4>What Ayşe can do at home</h4></div>
+    <div class="card checklist" id="checklist"></div>
   </section>
 
   <!-- ================= 4. FEEDBACK ================= -->
@@ -536,7 +577,7 @@ function go(stage) {
     const i = STAGES.indexOf(b.dataset.s);
     b.classList.toggle('active', b.dataset.s === stage);
     b.classList.toggle('done', i < state.reached && b.dataset.s !== stage);
-    b.disabled = i > state.reached;
+    b.disabled = false;
   });
   if (stage === 'handoff') renderRef();
   if (stage === 'feedback') loadFeedback();
@@ -676,12 +717,46 @@ $('#sbar-form').onsubmit = async e => {
 /* =============================================================================
    3. DISCHARGE
 ============================================================================= */
+/* Who we're teaching comes from the backend (POST /session → caregiver).
+   Nothing about the name or language is hard-coded here. */
+function normCaregiver(c) {
+  c = c || {};
+  const language = (c.language || c.lang || c.preferred_language || 'en').toLowerCase();
+  let languageName = c.language_name || '';
+  if (!languageName) {
+    try { languageName = new Intl.DisplayNames([language], { type: 'language' }).of(language); } catch { languageName = language; }
+    languageName = languageName.charAt(0).toLocaleUpperCase(language) + languageName.slice(1);
+  }
+  const name = c.name || 'Caregiver';
+  return {
+    name, relation: c.relation || c.role || '', language, languageName,
+    languageEn: (() => { try { return new Intl.DisplayNames(['en'], { type: 'language' }).of(language); } catch { return language; } })(),
+    initials: c.initials || name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase(),
+    needsInterpreter: language !== 'en',
+  };
+}
+state.caregiver = normCaregiver(null);
+
+function renderCaregiver() {
+  const c = state.caregiver;
+  $('#dc-intro').textContent = c.needsInterpreter
+    ? 'Explain the discharge plan in plain English, and the caregiver repeats it back. If you use a medical term, it gets translated into their preferred language.'
+    : 'Explain the discharge plan in plain English, and the caregiver repeats it back. Medical terms get flagged.';
+  $('#cg-head').innerHTML = `<div class="avatar av-ayse" style="width:30px;height:30px;font-size:12px">${esc(c.initials)}</div>${esc(c.name)}
+    <span class="tag">${c.relation ? esc(c.relation) + ' · ' : ''}English${c.needsInterpreter ? ` · prefers ${esc(c.languageName)} for medical terms` : ''}</span>`;
+  renderChecklist();
+}
+
 const dcInput = $('#dc-input'), jBox = $('#jargon');
 dcInput.addEventListener('input', () => {
   const j = findJargon(dcInput.value);
   if (j.length) {
-    jBox.querySelector('span').innerHTML = j.map(x =>
-      `Ayşe may not know <b>"${esc(x.term)}"</b>. Try <b>"${esc(x.plain)}"</b>`).join(' · ');
+    const c = state.caregiver;
+    const terms = j.map(x => `<b>"${esc(x.term)}"</b>`).join(', ');
+    const swaps = j.map(x => `<b>"${esc(x.plain)}"</b>`).join(', ');
+    jBox.querySelector('span').innerHTML = c.needsInterpreter
+      ? `Medical term: ${terms}. This will be translated into <b>${esc(c.languageEn === c.languageName ? c.languageName : `${c.languageEn} (${c.languageName})`)}</b> for ${esc(c.name)}. Plain English works better: try ${swaps}.`
+      : `Medical term: ${terms}. ${esc(c.name)} may not know it. Try ${swaps}.`;
     jBox.classList.add('show');
   } else jBox.classList.remove('show');
 });
@@ -693,8 +768,8 @@ function renderTurns() {
     <div class="turn">
       <div class="you"><span class="lbl">You said</span>"${esc(t.text)}"</div>
       <div class="tr ${t.pending ? 'pending' : ''}">
-        ${t.interp ? `<div class="interp"><span class="lbl">Interpreter</span>${esc(t.interp)}</div>` : ''}
-        <span class="lbl">Ayşe</span>
+        ${t.interp ? `<div class="interp"><span class="lbl">Medical term → translated to ${esc(state.caregiver.languageName)}</span>${esc(t.interp)}</div>` : ''}
+        <span class="lbl">${esc(state.caregiver.name)}</span>
         <div class="ayse">${t.pending ? '<span class="dots">…</span>' : `"${esc(t.reply)}"`}</div>
         ${t.en ? `<div class="gloss">${esc(t.en)}</div>` : ''}
       </div>
@@ -705,7 +780,7 @@ function renderTurns() {
 function renderChecklist(flashIds = []) {
   const box = $('#checklist');
   const ic = { ok: '✓', warn: '!', pending: '' };
-  box.innerHTML = '<h4>What Ayşe can do at home</h4>' + (state.checklist.length
+  box.innerHTML = `<h4>What ${esc(state.caregiver.name)} can do at home</h4>` + (state.checklist.length
     ? state.checklist.map(c => `<div class="ck ${c.status} ${flashIds.includes(c.id) ? 'flash' : ''}">
         <span class="ic">${ic[c.status] ?? ''}</span>${esc(c.label)}${c.note ? ` <span class="note">· ${esc(c.note)}</span>` : ''}</div>`).join('')
     : '<span class="empty">Items appear as you teach.</span>');
@@ -881,6 +956,8 @@ setInterval(() => {
   try {
     const r = await api('POST', '/session', {});
     state.id = r.session_id ?? r.id ?? r.sessionId;
+    state.caregiver = normCaregiver(r.caregiver || r.patient?.caregiver);
+    renderCaregiver();
     const p = r.patient;
     if (p) $('#chart-meta').textContent = `${p.name || 'Walter B.'} · ${p.age || 72} ${p.sex || 'M'} · CC: ${p.chief_complaint || 'shortness of breath'}`;
     await refreshSession(); renderChart(); renderChecklist();
@@ -956,7 +1033,8 @@ const Mock = (() => {
       const id = 'mock-' + (++n);
       S[id] = { found: new Set(FACTS.filter(f => f.start).map(f => f.id)), handed: new Set(), check: {}, handoffText: '' };
       ITEMS.forEach(i => S[id].check[i.id] = { status: 'pending', note: '' });
-      return { session_id: id, patient: { name: 'Walter B.', age: 72, sex: 'M', chief_complaint: 'shortness of breath' } };
+      return { session_id: id, patient: { name: 'Walter B.', age: 72, sex: 'M', chief_complaint: 'shortness of breath' },
+               caregiver: { name: 'Ayşe', relation: 'wife', language: 'tr' } };
     }
     const s = S[p[1]];
     if (!s) throw new Error('mock: unknown session');
@@ -999,14 +1077,14 @@ const Mock = (() => {
     const t = text.toLowerCase();
     const jar = findJargon(text);
     const hits = ITEMS.filter(i => i.re.test(t));
-    if (!hits.length) return { speaker: 'ayse', interpreter_tr: '(Tercüman çeviriyor…)', reply: 'Anlamadım, tekrar eder misiniz?', reply_en: "I didn't understand, could you say that again?", checklist: checklist(s), jargon: jar };
-    const tr = [], back = [], en = [];
+    if (!hits.length) return { speaker: 'caregiver', reply: "Sorry, I didn't follow. What do I need to do at home?", checklist: checklist(s), jargon: jar };
+    const translate = jar.length > 0;   // only medical terms trigger translation
     hits.forEach(i => {
-      const j = i.trJ && jar.length;
-      tr.push(j ? i.trJ : i.tr); back.push(j ? i.backJ : i.back); en.push(j ? i.enJ : i.en);
-      s.check[i.id] = j ? { status: 'warn', note: `you said "${jar[0].term}"` } : { status: 'ok', note: '' };
+      s.check[i.id] = translate ? { status: 'warn', note: `"${jar[0].term}" needed translation` } : { status: 'ok', note: '' };
     });
-    return { speaker: 'ayse', interpreter_tr: tr.join(' '), reply: back.join(' '), reply_en: en.join(' '), checklist: checklist(s), jargon: jar };
+    if (!translate) return { speaker: 'caregiver', reply: hits.map(i => i.en).join(' '), checklist: checklist(s), jargon: [] };
+    return { speaker: 'caregiver', interpreter: hits.map(i => i.tr).join(' '), reply: hits.map(i => i.back).join(' '),
+             reply_en: hits.map(i => i.en).join(' '), checklist: checklist(s), jargon: jar };
   }
   const checklist = s => ITEMS.map(i => ({ id: i.id, label: i.label, ...s.check[i.id] }));
 
