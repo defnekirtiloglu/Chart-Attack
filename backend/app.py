@@ -17,6 +17,7 @@ class StartIn(BaseModel):
 
 class TextIn(BaseModel):
     text: str
+    interpreter: Optional[bool] = True   # discharge only: False = talk to Ayşe directly in English
 
 
 def session(sid: str) -> engine.Session:
@@ -59,7 +60,7 @@ def chat(sid: str, body: TextIn):
     if s.stage == "ed":
         return guard(engine.ed_chat, s, body.text)
     if s.stage == "discharge":
-        return guard(engine.discharge_chat, s, body.text)
+        return guard(engine.discharge_chat, s, body.text, body.interpreter is not False)
     raise HTTPException(409, f"No chat in the {s.stage} stage.")
 
 

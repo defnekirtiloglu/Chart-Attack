@@ -39,7 +39,7 @@ Open http://127.0.0.1:8000/docs. With no key, everything still runs on keyword f
 | `GET /session/{id}` | any time | same state, plus `transcript`, `handoff`, `plan` |
 | `POST /session/{id}/chat` `{text}` | stage `ed` | `reply`, `new_facts[]` (pop into chart), `dodged` (Walter dodged), `hidden_count` |
 | `POST /session/{id}/handoff` `{text}` | after ED | cardiologist `reply`, `handed_off[]`, `unclear[]`, `pharmacist` (`note`, `caught[]`), `missing_critical[]` (with `consequence`), `plan[]`; stage → `discharge` |
-| `POST /session/{id}/chat` `{text}` | stage `discharge` | `interpreted_tr` (what the interpreter said), `translation_check` (`status` ok / flagged / unchecked, `back_translation`, `issues[]`), `reply_tr` + `reply_en` (Ayşe), `points[]` (plan checklist: `covered`, `clear`, `jargon`) |
+| `POST /session/{id}/chat` `{text, interpreter}` | stage `discharge` | `interpreted_tr` (what the interpreter said), `translation_check` (`status` ok / flagged / unchecked, `back_translation`, `issues[]`), `reply_tr` (exactly what Ayşe said: broken English mixed with Turkish) + `reply_en` (plain English meaning), `too_long` (direct mode: she lost you), `points[]` (plan checklist: `covered`, `clear`, `jargon`) |
 | `POST /session/{id}/teachback` | end of discharge | Ayşe's repeat-back `tr` + `en`, `understood[]`, `missed[]`; stage → `done` |
 | `POST /tts` `{text, voice}` | any reply | `audio/mpeg`. voice = `walter`, `ayse` (Turkish), or `okafor`. 503 if voice is offline |
 | `GET /session/{id}/feedback` | after teachback | `threads[]`: each critical fact with 3 `steps` (ed, handoff, discharge), `lost_at`, `rescued_by`, `consequence`; plus `translation_flags[]` |
@@ -47,3 +47,8 @@ Open http://127.0.0.1:8000/docs. With no key, everything still runs on keyword f
 Stages: `ed` → `handoff` → `discharge` → `done`. Wrong-stage calls return 409 with a plain message.
 
 Fictional teaching case. Not medical advice.
+
+## Ayşe: two ways to teach her
+Ayşe understands simple, slow English and speaks broken English mixed with Turkish.
+- `interpreter: true` (default): Gemini interprets into Turkish, and Claude back-translates to check it.
+- `interpreter: false`: talk to her directly. Code decides she only follows sentences averaging 15 words or fewer, with no unexplained jargon. Long sentences → `too_long: true`, and she says so, half in Turkish.

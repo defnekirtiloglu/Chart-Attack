@@ -368,16 +368,38 @@ def check_translation(original: str, turkish: str) -> dict:
             "why": "Two checks: numbers match in code, meaning compared by a second model."}
 
 
-def discharge_chat(s: Session, text: str) -> dict:
+MAX_WORDS_DIRECT = 15   # Ayşe follows short English sentences only
+
+
+def avg_sentence_words(text: str) -> float:
+    parts = [x for x in re.split(r"[.!?]+", text) if x.strip()]
+    return sum(len(x.split()) for x in parts) / max(len(parts), 1)
+
+
+AYSE_STYLE = ("You speak broken English: short phrases, simple words, Turkish word order, dropped articles, "
+              "and you slip into Turkish words or whole sentences when you are confused, worried or emotional "
+              "(e.g. 'Tamam, every morning weigh... ama neden?'). ")
+
+
+def discharge_chat(s: Session, text: str, interpreter: bool = True) -> dict:
+    """Two ways to teach Ayşe:
+    interpreter=True  -> Gemini interprets to Turkish, Claude back-translates to check it.
+    interpreter=False -> you talk to her directly in English. She follows only short, plain sentences."""
     if s.stage != "discharge":
         raise ValueError("Finish the handoff first.")
     s.turn += 1
-    tr = interpret(text)
-    check = check_translation(text, tr)
-    s.log("student", text, text_tr=tr, translation_check=check)
     judged = judge_points(s, text)
-    if check["status"] == "flagged":   # Ayşe heard something different, so nothing from this message counts as clear
-        judged = {pid: dict(j, specific=False) for pid, j in judged.items()}
+    tr, check, too_long = None, None, False
+    if interpreter:
+        tr = interpret(text)
+        check = check_translation(text, tr)
+        if check["status"] == "flagged":   # Ayşe heard something different, so nothing from this message counts as clear
+            judged = {pid: dict(j, specific=False) for pid, j in judged.items()}
+    else:
+        too_long = avg_sentence_words(text) > MAX_WORDS_DIRECT
+        if too_long:                        # code decides: long English sentences lose her
+            judged = {pid: dict(j, specific=False) for pid, j in judged.items()}
+    s.log("student", text, text_tr=tr, translation_check=check, interpreter=interpreter)
     for pid, j in judged.items():
         prev = s.points.get(pid, {"covered": False, "clear": False, "jargon": []})
         clear = j["specific"] and not j["jargon"]
@@ -385,18 +407,26 @@ def discharge_chat(s: Session, text: str) -> dict:
                          "jargon": [] if (prev["clear"] or clear) else sorted(set(prev["jargon"] + j["jargon"]))}
     confusing = sorted({w for pid in judged for w in s.points[pid]["jargon"]})
     cg = s.case["caregiver"]
+    heard = (f"The interpreter just told you in Turkish: \"{tr}\"\nReply mostly in Turkish, with a few English words.\n"
+             if interpreter else
+             f"The doctor spoke to you directly in English: \"{text}\"\n" + AYSE_STYLE
+             + ("The sentences were too long and fast for you; you lost track. Say so, half in Turkish.\n" if too_long else ""))
     out = llm.ask_json(
-        f"You are {cg['name']}, {cg['age']}, Walter's wife. {cg['persona']}\n"
-        f"The interpreter just told you (in Turkish): \"{tr}\"\n"
+        f"You are {cg['name']}, {cg['age']}, Walter's wife. {cg['persona']}\n" + heard
         + (f"These words were not explained and you don't know them: {confusing}. Politely ask what they mean.\n" if confusing else "")
-        + "Reply in 1-2 short sentences of Turkish, as you would speak. "
-          "Return JSON {\"tr\": Turkish reply, \"en\": English translation}.", 0.7)
+        + "1-2 short sentences, as you would actually speak. "
+          "Return JSON {\"said\": exactly what you say (mixed Turkish/broken English), \"en\": its meaning in plain English}.", 0.7)
     if not isinstance(out, dict):
-        out = {"tr": "Anladım, teşekkür ederim." if not confusing else f"Affedersiniz, '{confusing[0]}' ne demek?",
-               "en": "I understand, thank you." if not confusing else f"Excuse me, what does '{confusing[0]}' mean?"}
-    s.log("caregiver", out.get("tr", ""), text_en=out.get("en", ""))
-    return {"speaker": cg["name"], "interpreted_tr": tr, "translation_check": check,
-            "reply_tr": out.get("tr", ""), "reply_en": out.get("en", ""), "points": progress(s)}
+        if too_long:
+            out = {"said": "Çok hızlı... too fast, sorry. Again, slow?", "en": "Too fast, sorry. Again, slowly?"}
+        elif confusing:
+            out = {"said": f"Affedersiniz... '{confusing[0]}' — what is this?", "en": f"Excuse me, what does '{confusing[0]}' mean?"}
+        else:
+            out = {"said": "Tamam, tamam. I understand, teşekkürler.", "en": "Okay, okay. I understand, thank you."}
+    said = out.get("said") or out.get("tr", "")
+    s.log("caregiver", said, text_en=out.get("en", ""))
+    return {"speaker": cg["name"], "interpreter": interpreter, "interpreted_tr": tr, "translation_check": check,
+            "too_long": too_long, "reply_tr": said, "reply_en": out.get("en", ""), "points": progress(s)}
 
 
 def progress(s: Session) -> List[dict]:
@@ -415,12 +445,12 @@ def do_teachback(s: Session) -> dict:
         f"You understood ONLY these points: {[p['point'] for p in got]}\n"
         f"You did NOT understand or were never told: {[p['point'] for p in lost]}\n"
         "Repeat back what you understood in simple words, then honestly say what you are unsure about, "
-        "without naming the details you never heard. 3-5 sentences of Turkish. "
-        "Return JSON {\"tr\": Turkish, \"en\": English translation}.", 0.6)
+        "without naming the details you never heard. " + AYSE_STYLE + "3-5 short sentences. "
+        "Return JSON {\"tr\": exactly what you say (mixed Turkish/broken English), \"en\": its meaning in plain English}.", 0.6)
     if not isinstance(out, dict):
         said = " ".join(p["point"] for p in got)
-        out = {"tr": ("Anladığım kadarıyla: " + said) if got else "Açıkçası pek bir şey anlamadım.",
-               "en": ("What I understood: " + said) if got else "Honestly, I didn't really understand."}
+        out = {"tr": ("Tamam, I understand: " + said + " Ama... the rest, bilmiyorum.") if got else "Açıkçası... I don't understand much. Sorry.",
+               "en": ("Okay, I understood: " + said + " But the rest, I don't know.") if got else "Honestly, I didn't understand much. Sorry."}
     s.teachback = {"understood": [p["id"] for p in got], "missed": [p["id"] for p in lost], **out}
     s.log("caregiver", out.get("tr", ""), text_en=out.get("en", ""), teachback=True)
     s.stage = "done"
