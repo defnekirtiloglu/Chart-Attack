@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Walter · ED → Handoff → Home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kalam:wght@400;700&family=Permanent+Marker&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --paper:#f6f2e8; --paper-2:#fffdf8; --ink:#1f1d1a; --ink-2:#5c574e; --ink-3:#8d877b; --rule:#e4ddcc;
+  --walter:#c7791a; --walter-bg:#fbeedb;
+  --ayse:#2463c7; --ayse-bg:#e3ecfa;
+  --okafor:#7a4cc2; --okafor-bg:#efe6fb;
+  --ok:#1f8a5b; --ok-bg:#e1f3ea; --warn:#b97c04; --warn-bg:#fdf1d4; --bad:#cf3b2f; --bad-bg:#fbe5e2;
+  --serif:"Source Serif 4",Georgia,serif; --sans:Inter,system-ui,-apple-system,sans-serif;
+  --marker:"Permanent Marker",cursive; --hand:Kalam,"Comic Sans MS",cursive;
+  --radius:14px; --shadow:0 1px 0 rgba(0,0,0,.04),0 6px 24px -12px rgba(60,40,10,.25);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font:15px/1.45 var(--sans);-webkit-font-smoothing:antialiased;min-height:100vh}
+button{font:inherit;cursor:pointer}
+input,textarea{font:inherit;color:inherit}
+
+/* ---------- header / stepper ---------- */
+header{position:sticky;top:0;z-index:20;background:rgba(246,242,232,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+.bar{max-width:1200px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:20px}
+.brand{font:700 19px var(--serif);letter-spacing:-.01em;white-space:nowrap}
+.brand span{color:var(--ink-3);font-weight:400}
+.steps{display:flex;gap:4px;flex:1;justify-content:center}
+.step{border:0;background:none;padding:7px 12px;border-radius:999px;color:var(--ink-3);display:flex;gap:8px;align-items:center;font-weight:500;font-size:14px}
+.step b{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;border:1.5px solid currentColor}
+.step.done{color:var(--ink-2)} .step.done b{background:var(--ink-2);color:var(--paper);border-color:var(--ink-2)}
+.step.active{color:var(--ink);background:var(--paper-2);box-shadow:var(--shadow)} .step.active b{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.step:disabled{cursor:default;opacity:.55}
+.mode{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--rule);color:var(--ink-2);white-space:nowrap}
+.mode.live{color:var(--ok);border-color:#b9dfcb;background:var(--ok-bg)}
+
+main{max-width:1200px;margin:0 auto;padding:28px 24px 60px}
+.screen{display:none;animation:fade .35s ease}
+.screen.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.screen-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:18px}
+.screen-head h1{font:600 28px/1.15 var(--serif);margin:0;letter-spacing:-.015em}
+.screen-head p{margin:4px 0 0;color:var(--ink-2);max-width:640px}
+.btn{border:0;border-radius:10px;padding:10px 16px;font-weight:600;background:var(--ink);color:var(--paper);display:inline-flex;gap:8px;align-items:center;white-space:nowrap}
+.btn:hover{filter:brightness(1.15)}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--rule)}
+.btn:disabled{opacity:.4;cursor:default}
+.card{background:var(--paper-2);border:1px solid var(--rule);border-radius:var(--radius);box-shadow:var(--shadow)}
+
+/* ---------- ED: video call ---------- */
+.ed{display:grid;grid-template-columns:1.15fr .85fr;gap:20px;align-items:start}
+.call{background:#1c1a17;color:#f3eee4;border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px;min-height:560px;box-shadow:0 20px 50px -25px rgba(0,0,0,.6);position:relative;overflow:hidden}
+.call::before{content:"";position:absolute;inset:0;background:radial-gradient(600px 300px at 20% 0%,rgba(199,121,26,.22),transparent 70%);pointer-events:none}
+.call-top{display:flex;align-items:center;gap:12px;position:relative}
+.avatar{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;font-weight:700;flex:none}
+.av-walter{background:#5a3610;color:#ffc477;box-shadow:0 0 0 3px rgba(199,121,26,.35)}
+.av-ayse{background:var(--ayse);color:#fff}
+.av-okafor{background:var(--okafor);color:#fff}
+.call-top .who{font-weight:600;font-size:17px}
+.call-top .sub{font-size:12.5px;color:#b8b0a2}
+.live-dot{margin-left:auto;font-size:12px;color:#b8b0a2;display:flex;gap:6px;align-items:center}
+.live-dot i{width:8px;height:8px;border-radius:50%;background:#e5484d;animation:blink 1.4s infinite}
+@keyframes blink{50%{opacity:.25}}
+.speaking{position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;padding:6px 6px}
+.video{position:relative;border-radius:16px;overflow:hidden;aspect-ratio:16/10;background:#25272c}
+.video>svg{width:100%;height:100%;display:block}
+.video-top{position:absolute;inset:0 0 auto 0;display:flex;align-items:center;gap:12px;padding:12px 14px 26px;background:linear-gradient(rgba(0,0,0,.55),transparent)}
+.video-top .who{font-weight:600;font-size:16px}.video-top .sub{font-size:12px;color:#d0c8bb}
+.voice-btn{border:0;background:rgba(0,0,0,.4);color:#fff;border-radius:999px;width:34px;height:34px;font-size:15px}
+.voice-btn.on{background:var(--walter)}
+.pip{position:absolute;right:12px;bottom:12px;width:74px;height:96px;border-radius:10px;background:#3a3732;border:2px solid rgba(255,255,255,.25);overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end}
+.pip svg{width:100%;height:auto}.pip span{position:absolute;left:6px;top:4px;font-size:10px;color:#ddd}
+#head-g{animation:breathe 4.5s ease-in-out infinite}
+@keyframes breathe{50%{transform:translateY(1.6px)}}
+#eyes,#brows,#pupils{transform-box:fill-box;transform-origin:center;transition:transform .25s ease}
+#eyes.blink{transform:scaleY(.1);transition-duration:.07s}
+#walter-face.thinking #pupils{transform:translate(-4px,-3px)}
+#walter-face.thinking #brows{transform:translateY(3px)}
+#walter-face.caught #brows{transform:translateY(-7px)}
+#walter-face.caught #pupils{transform:scale(1.15)}
+.ecg{stroke-dasharray:140;animation:ecg 1.6s linear infinite}
+@keyframes ecg{from{stroke-dashoffset:140}to{stroke-dashoffset:0}}
+.bubble-big{font:500 21px/1.35 var(--serif);background:#2a2722;border-radius:18px;padding:22px 24px;position:relative;border-left:4px solid var(--walter);min-height:96px}
+.bubble-big.typing{color:#8d857a}
+.bubble-big .dots span{display:inline-block;width:8px;height:8px;margin-right:5px;border-radius:50%;background:#8d857a;animation:dot 1s infinite}
+.bubble-big .dots span:nth-child(2){animation-delay:.15s}.bubble-big .dots span:nth-child(3){animation-delay:.3s}
+@keyframes dot{40%{transform:translateY(-5px)}}
+.history{max-height:150px;overflow:auto;display:flex;flex-direction:column;gap:6px;font-size:13.5px;padding-right:4px;position:relative}
+.history .h{color:#a39b8e} .history .h b{color:#e7dfd1;font-weight:500}
+.history .h.walter b{color:#ffc477}
+.ask{display:flex;gap:8px;position:relative}
+.ask input{flex:1;background:#2a2722;border:1px solid #3a362f;border-radius:12px;padding:13px 14px;color:#f3eee4;outline:none}
+.ask input:focus{border-color:var(--walter)}
+.ask input::placeholder{color:#8d857a}
+.icon-btn{width:46px;border-radius:12px;border:1px solid #3a362f;background:#2a2722;color:#e7dfd1;display:grid;place-items:center}
+.icon-btn.rec{background:#e5484d;border-color:#e5484d;color:#fff}
+.icon-btn.send{background:var(--walter);border-color:var(--walter);color:#1c1a17}
+
+/* chart */
+.chart{padding:20px 22px;background:var(--paper-2) repeating-linear-gradient(transparent 0 31px,var(--rule) 31px 32px);background-position:0 70px;min-height:560px}
+.chart h2{font:600 20px var(--serif);margin:0}
+.chart .meta{color:var(--ink-3);font-size:13px;margin-bottom:18px}
+.chart h3{font:600 11px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin:18px 0 8px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:999px;font-size:13.5px;font-weight:500;border:1px solid transparent;white-space:nowrap}
+.chip.good{background:var(--ok-bg);color:#17694a;border-color:#c3e5d3}
+.chip.bad{background:var(--bad-bg);color:#a8261c;border-color:#f3c6c0}
+.chip.neutral{background:#eee9dd;color:var(--ink-2)}
+.chip.locked{background:transparent;color:var(--ink-3);border:1.5px dashed #c8c0ad}
+.chip.pop{animation:pop .5s ease}
+@keyframes pop{0%{transform:scale(.6)}60%{transform:scale(1.12)}100%{transform:scale(1)}}
+.chip.fly{position:fixed;z-index:100;pointer-events:none;box-shadow:0 10px 30px -8px rgba(0,0,0,.35);transform-origin:left center}
+.locked.pulse{animation:pulse .7s ease}
+@keyframes pulse{30%{transform:scale(1.15);border-color:var(--walter);color:var(--walter)}}
+.empty{color:var(--ink-3);font-style:italic;font-size:14px}
+.hint{margin-top:22px;font-size:13px;color:var(--ink-2);background:var(--walter-bg);border-radius:10px;padding:10px 12px}
+
+/* ---------- Handoff: whiteboard ---------- */
+.handoff{display:grid;grid-template-columns:1.25fr .75fr;gap:20px;align-items:start}
+.board{background:#fdfdfb;border-radius:8px;padding:26px 28px 22px;border:10px solid #c9ccd0;box-shadow:inset 0 0 40px rgba(0,0,0,.05),0 18px 40px -24px rgba(0,0,0,.45);position:relative}
+.board::after{content:"";position:absolute;left:30px;right:30px;bottom:-22px;height:10px;background:#a9adb2;border-radius:0 0 4px 4px}
+.board-title{font:24px var(--marker);color:#2b4a8c;margin:0 0 14px;display:flex;justify-content:space-between;align-items:baseline}
+.board-title small{font:15px var(--hand);color:#666}
+.sbar-row{display:grid;grid-template-columns:42px 1fr;gap:10px;align-items:start;border-bottom:2px dashed #e3e5e8;padding:8px 0}
+.sbar-row:last-of-type{border-bottom:0}
+.sbar-row .L{font:30px/1 var(--marker);padding-top:6px}
+.sbar-row:nth-of-type(1) .L{color:#c0392b}.sbar-row:nth-of-type(2) .L{color:#2b4a8c}.sbar-row:nth-of-type(3) .L{color:#1f7a4d}.sbar-row:nth-of-type(4) .L{color:#7a4cc2}
+.sbar-row label{display:block;font:13px var(--hand);color:#888;margin-bottom:-2px}
+.sbar-row textarea{width:100%;border:0;background:transparent;resize:none;font:20px/1.35 var(--hand);color:#1d2a44;outline:none;min-height:34px;overflow:hidden}
+.sbar-row textarea::placeholder{color:#c3c6cc}
+.board-foot{display:flex;justify-content:space-between;align-items:center;margin-top:14px}
+.board-foot .count{font:15px var(--hand);color:#888}
+.side{display:flex;flex-direction:column;gap:16px}
+.okafor{padding:18px}
+.okafor .top{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+.okafor .top .who{font-weight:600}
+.okafor .top .sub{font-size:12.5px;color:var(--ink-3)}
+.say{background:var(--okafor-bg);border-left:4px solid var(--okafor);border-radius:12px;padding:12px 14px;font:500 17px/1.4 var(--serif);margin-top:8px}
+.say.q{background:#fff;border:1.5px solid var(--okafor);font-weight:600}
+.say.wait{color:var(--ink-3);font-style:italic;font-weight:400;background:#f5f1fb}
+.missing{margin-top:14px}
+.missing h4{margin:0 0 6px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.missing li{font-size:14px;color:var(--bad);margin:3px 0}
+.missing ul{margin:0;padding-left:18px}
+.ref{padding:16px 18px}
+.ref h4{margin:0 0 10px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.ref .chip{cursor:copy}
+
+/* ---------- Discharge: translator ---------- */
+.split-head{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:8px}
+.split-head div{display:flex;align-items:center;gap:10px;font-weight:600}
+.split-head .tag{font-size:12px;font-weight:500;color:var(--ink-3)}
+.turns{display:flex;flex-direction:column;gap:12px;max-height:440px;overflow:auto;padding:4px 2px 4px 0}
+.turn{display:grid;grid-template-columns:1fr 1fr;gap:14px;animation:fade .3s ease}
+.you,.tr{border-radius:16px;padding:16px 18px}
+.you{background:#24211d;color:#f3eee4;font:500 18px/1.4 var(--serif)}
+.you .lbl,.tr .lbl{display:block;font:600 11px var(--sans);letter-spacing:.07em;text-transform:uppercase;opacity:.6;margin-bottom:6px}
+.tr{background:#0e2a5a;color:#cfe0ff}
+.tr .interp{font:500 15px/1.4 var(--serif);color:#9dbcf0;font-style:italic;padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid rgba(255,255,255,.12)}
+.tr .ayse{font:600 19px/1.35 var(--serif);color:#e8f0ff}
+.tr .gloss{font-size:13.5px;color:#8fb0e6;margin-top:6px}
+.tr.pending .ayse{color:#6e8fc4}
+.turn-empty{grid-column:1/-1;text-align:center;color:var(--ink-3);padding:40px 0;font-style:italic;border:1.5px dashed var(--rule);border-radius:16px}
+.compose{margin-top:14px;position:relative}
+.compose .row{display:flex;gap:8px}
+.compose input{flex:1;background:var(--paper-2);border:1.5px solid var(--rule);border-radius:12px;padding:14px;outline:none;font-size:16px}
+.compose input:focus{border-color:var(--ayse)}
+.compose .icon-btn{background:var(--paper-2);border-color:var(--rule);color:var(--ink)}
+.compose .icon-btn.send{background:var(--ayse);border-color:var(--ayse);color:#fff}
+.jargon{position:absolute;left:0;bottom:calc(100% + 8px);background:var(--warn-bg);border:1px solid #efd49a;color:#7a5200;padding:8px 12px;border-radius:10px;font-size:14px;box-shadow:var(--shadow);display:none;align-items:center;gap:8px}
+.jargon.show{display:flex;animation:jig .4s ease}
+@keyframes jig{0%{transform:translateY(6px);opacity:0}60%{transform:translateY(-2px)}100%{transform:none;opacity:1}}
+.checklist{margin-top:18px;padding:16px 20px;display:flex;flex-wrap:wrap;gap:10px 26px}
+.checklist h4{width:100%;margin:0;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.ck{display:flex;align-items:center;gap:8px;font-size:15px}
+.ck .ic{width:20px;height:20px;display:grid;place-items:center;border-radius:50%;font-size:12px;font-weight:700;flex:none}
+.ck.pending{color:var(--ink-3)} .ck.pending .ic{border:1.8px solid #b9b2a3}
+.ck.ok .ic{background:var(--ok);color:#fff}
+.ck.warn{color:#7a5200} .ck.warn .ic{background:var(--warn);color:#fff}
+.ck .note{color:var(--warn);font-size:13px}
+.ck.flash{animation:pop .5s ease}
+
+/* ---------- Feedback: subway map ---------- */
+.mapcard{padding:26px 26px 18px;background:#fffefb}
+#subway{width:100%;height:auto;display:block}
+#subway .stn-label{font:600 14px var(--sans);fill:var(--ink-2)}
+#subway .row-label{font:500 15px var(--sans);fill:var(--ink)}
+#subway .row-label.lost{fill:var(--ink-2)}
+#subway .grid{stroke:#ece6d8;stroke-width:1.5}
+.legend{display:flex;gap:22px;flex-wrap:wrap;font-size:13px;color:var(--ink-2);margin-top:10px;padding-top:12px;border-top:1px solid var(--rule)}
+.legend span{display:flex;align-items:center;gap:7px}
+.summary{font:500 19px/1.4 var(--serif);margin:0 0 18px}
+.threads{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:18px}
+.thread{padding:14px 16px}
+.thread .t{font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.thread .t i{width:12px;height:4px;border-radius:2px}
+.thread ol{margin:0;padding-left:18px;font-size:13.5px;color:var(--ink-2)}
+.thread li.bad{color:var(--bad)}
+.thread li.good{color:#17694a}
+
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#24211d;color:#f3eee4;padding:10px 16px;border-radius:10px;font-size:14px;z-index:200;display:none}
+.toast.show{display:block;animation:fade .25s}
+.toast.err{background:var(--bad)}
+
+@media (max-width:900px){
+  .ed,.handoff{grid-template-columns:1fr}
+  .steps .step span{display:none}
+  .turn,.split-head{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <div class="brand">Walter <span>· one patient, three handoffs</span></div>
+    <nav class="steps" id="steps">
+      <button class="step" data-s="ed"><b>1</b><span>ED</span></button>
+      <button class="step" data-s="handoff"><b>2</b><span>Handoff</span></button>
+      <button class="step" data-s="discharge"><b>3</b><span>Discharge</span></button>
+      <button class="step" data-s="feedback"><b>4</b><span>Feedback</span></button>
+    </nav>
+    <div class="mode" id="mode">Mock data</div>
+  </div>
+</header>
+
+<main>
+  <!-- ================= 1. ED ================= -->
+  <section class="screen" id="s-ed">
+    <div class="screen-head">
+      <div>
+        <h1>Emergency department</h1>
+        <p>Walter is 72 and short of breath. He's funny, he's grumpy, and he isn't telling you everything.</p>
+      </div>
+      <button class="btn" id="to-handoff">Hand off to cardiology →</button>
+    </div>
+    <div class="ed">
+      <div class="call">
+        <div class="video">
+          <svg id="walter-face" viewBox="0 0 480 300" aria-label="Walter, on video">
+            <defs>
+              <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3d4148"/><stop offset="1" stop-color="#25272c"/></linearGradient>
+              <radialGradient id="lamp" cx=".5" cy=".35" r=".6"><stop offset="0" stop-color="#ffd9a0" stop-opacity=".28"/><stop offset="1" stop-color="#ffd9a0" stop-opacity="0"/></radialGradient>
+              <pattern id="curtain" width="16" height="300" patternUnits="userSpaceOnUse"><rect width="16" height="300" fill="#4c6a6e"/><rect width="7" height="300" fill="#557578"/></pattern>
+              <pattern id="gown" width="18" height="18" patternUnits="userSpaceOnUse"><rect width="18" height="18" fill="#9db6c8"/><circle cx="5" cy="5" r="1.8" fill="#7f9bb0"/><circle cx="14" cy="14" r="1.8" fill="#7f9bb0"/></pattern>
+              <radialGradient id="skin" cx=".45" cy=".35" r=".75"><stop offset="0" stop-color="#f1c4a0"/><stop offset="1" stop-color="#d99e78"/></radialGradient>
+            </defs>
+            <rect width="480" height="300" fill="url(#wall)"/>
+            <rect width="480" height="300" fill="url(#lamp)"/>
+            <path d="M0 0 H86 Q78 150 92 300 H0 Z" fill="url(#curtain)" opacity=".75"/>
+            <g transform="translate(378 74)">
+              <rect width="86" height="62" rx="7" fill="#101214" stroke="#3a3f45" stroke-width="2"/>
+              <polyline class="ecg" points="6,36 18,36 22,30 26,36 34,36 38,14 42,48 46,36 58,36 62,31 66,36 80,36" fill="none" stroke="#44d38a" stroke-width="2"/>
+              <text x="8" y="56" font-size="10" font-family="Inter,sans-serif" fill="#ffb54d">SpO₂ 84</text>
+              <text x="58" y="56" font-size="10" font-family="Inter,sans-serif" fill="#44d38a">♥ 104</text>
+            </g>
+            <g id="head-g">
+              <path d="M104 300 C114 236 168 214 240 211 C312 214 366 236 376 300 Z" fill="url(#gown)"/>
+              <path d="M206 212 L240 250 L274 212 Z" fill="#cf946f"/>
+              <rect x="211" y="176" width="58" height="48" rx="12" fill="#d79b76"/>
+              <path d="M170 160 Q160 196 194 236 M310 160 Q320 196 286 236" stroke="#d6eef3" stroke-width="2.5" fill="none" opacity=".8"/>
+              <ellipse cx="166" cy="148" rx="13" ry="20" fill="#dba07a"/>
+              <ellipse cx="314" cy="148" rx="13" ry="20" fill="#dba07a"/>
+              <ellipse cx="240" cy="134" rx="75" ry="87" fill="url(#skin)"/>
+              <g fill="#dcdcd6">
+                <circle cx="172" cy="104" r="12"/><circle cx="166" cy="119" r="13"/><circle cx="168" cy="134" r="10"/><circle cx="180" cy="94" r="9"/>
+                <circle cx="308" cy="104" r="12"/><circle cx="314" cy="119" r="13"/><circle cx="312" cy="134" r="10"/><circle cx="300" cy="94" r="9"/>
+              </g>
+              <ellipse cx="218" cy="70" rx="24" ry="9" fill="#fff" opacity=".22" transform="rotate(-12 218 70)"/>
+              <g stroke="#c48a66" stroke-width="2" fill="none" stroke-linecap="round">
+                <path d="M206 88 Q240 82 274 88"/><path d="M211 98 Q240 93 269 98"/>
+                <path d="M222 168 Q211 184 217 199"/><path d="M258 168 Q269 184 263 199"/>
+                <path d="M180 176 Q188 204 212 213"/><path d="M300 176 Q292 204 268 213"/>
+              </g>
+              <circle cx="195" cy="160" r="14" fill="#e48c76" opacity=".33"/>
+              <circle cx="285" cy="160" r="14" fill="#e48c76" opacity=".33"/>
+              <g id="eyes">
+                <ellipse cx="209" cy="130" rx="10" ry="7" fill="#fff"/>
+                <ellipse cx="271" cy="130" rx="10" ry="7" fill="#fff"/>
+                <g id="pupils" fill="#2a2522"><circle cx="210" cy="131" r="4.5"/><circle cx="272" cy="131" r="4.5"/></g>
+                <path d="M198 127 Q209 120 221 127 M260 127 Q271 120 283 127" stroke="#b77d5b" stroke-width="2.5" fill="#e3ab86"/>
+              </g>
+              <g id="brows" stroke="#efefe9" stroke-linecap="round" fill="none">
+                <path d="M190 116 Q206 104 227 117" stroke-width="7.5"/>
+                <path d="M253 117 Q274 104 290 116" stroke-width="7.5"/>
+                <path d="M194 112 l-5 -5 M224 113 l4 -5 M256 113 l-4 -5 M286 112 l5 -5" stroke-width="3"/>
+              </g>
+              <g fill="rgba(255,255,255,.07)" stroke="#3a2e28" stroke-width="3.5">
+                <rect x="189" y="116" width="40" height="28" rx="9"/><rect x="251" y="116" width="40" height="28" rx="9"/>
+                <path d="M229 128 Q240 122 251 128 M189 125 L168 123 M291 125 L312 123" fill="none"/>
+              </g>
+              <path d="M236 132 Q230 157 225 164 Q231 175 244 172 Q257 175 256 164 Q250 156 245 132 Z" fill="#dc9a75"/>
+              <circle cx="235" cy="168" r="2.4" fill="#9c5f45"/><circle cx="247" cy="168" r="2.4" fill="#9c5f45"/>
+              <path d="M170 160 Q200 182 233 172 M310 160 Q280 182 247 172" stroke="#d6eef3" stroke-width="2.5" fill="none" opacity=".85"/>
+              <ellipse id="mouth-open" cx="240" cy="194" rx="12" ry="0" fill="#4a1d18"/>
+              <path id="mouth-line" d="M224 196 Q240 189 256 196" stroke="#6b3b2e" stroke-width="3" fill="none" stroke-linecap="round"/>
+              <path d="M212 183 Q226 173 240 180 Q254 173 268 183 Q263 193 251 189 Q240 186 229 189 Q217 193 212 183 Z" fill="#e6e6e0"/>
+            </g>
+          </svg>
+          <div class="video-top">
+            <div><div class="who">Walter B., 72</div><div class="sub">Bay 4 · brought in by wife</div></div>
+            <div class="live-dot"><i></i><span id="timer">00:00</span></div>
+            <button type="button" class="voice-btn" id="voice-btn" title="Let Walter talk out loud">🔇</button>
+          </div>
+          <div class="pip"><svg viewBox="0 0 60 60"><circle cx="30" cy="24" r="11" fill="#6e6a63"/><path d="M8 60 Q10 38 30 38 Q50 38 52 60Z" fill="#6e6a63"/></svg><span>You</span></div>
+        </div>
+        <div class="speaking">
+          <div class="bubble-big" id="walter-bubble">"Another one. Go ahead, kid. Ask."</div>
+        </div>
+        <div class="history" id="ed-history"></div>
+        <form class="ask" id="ed-form" autocomplete="off">
+          <input id="ed-input" placeholder="Ask him anything…" aria-label="Ask Walter">
+          <button type="button" class="icon-btn mic" title="Speak" aria-label="Speak">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+          </button>
+          <button class="icon-btn send" aria-label="Send">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </form>
+      </div>
+
+      <div class="card chart">
+        <h2>Chart</h2>
+        <div class="meta" id="chart-meta">Walter B. · 72 M · CC: shortness of breath</div>
+        <h3>Findings</h3>
+        <div class="chips" id="chart-chips"></div>
+        <div class="hint">Facts land here as he gives them up. The dashed chip counts what he's still hiding. Ask the way you'd ask a real patient.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 2. HANDOFF ================= -->
+  <section class="screen" id="s-handoff">
+    <div class="screen-head">
+      <div>
+        <h1>Handoff to cardiology</h1>
+        <p>Dr. Okafor only knows what you write on the board. Anything you leave out is gone.</p>
+      </div>
+      <button class="btn" id="to-discharge" disabled>Go to discharge →</button>
+    </div>
+    <div class="handoff">
+      <form class="board" id="sbar-form">
+        <div class="board-title">Bay 4 · Walter B. <small id="board-date"></small></div>
+        <div class="sbar-row"><div class="L">S</div><div><label>Situation</label><textarea data-k="s" rows="1" placeholder="72M, 5 days worse breathing…"></textarea></div></div>
+        <div class="sbar-row"><div class="L">B</div><div><label>Background</label><textarea data-k="b" rows="1" placeholder="Meds, history, home…"></textarea></div></div>
+        <div class="sbar-row"><div class="L">A</div><div><label>Assessment</label><textarea data-k="a" rows="1" placeholder="What you think is going on"></textarea></div></div>
+        <div class="sbar-row"><div class="L">R</div><div><label>Recommendation</label><textarea data-k="r" rows="1" placeholder="What you need from her"></textarea></div></div>
+        <div class="board-foot">
+          <span class="count" id="sbar-count">0 words</span>
+          <button class="btn" style="background:var(--okafor)">Page Dr. Okafor</button>
+        </div>
+      </form>
+      <div class="side">
+        <div class="card okafor">
+          <div class="top">
+            <div class="avatar av-okafor">LO</div>
+            <div><div class="who">Dr. L. Okafor</div><div class="sub">Cardiology · on call</div></div>
+          </div>
+          <div id="okafor-out"><div class="say wait">Waiting for your handoff…</div></div>
+        </div>
+        <div class="card ref">
+          <h4>Your chart (click to drop onto the board)</h4>
+          <div class="chips" id="ref-chips"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 3. DISCHARGE ================= -->
+  <section class="screen" id="s-discharge">
+    <div class="screen-head">
+      <div>
+        <h1>Discharge teaching</h1>
+        <p>Ayşe runs his pills at home and prefers Turkish. Explain it plainly; the interpreter translates, and she repeats it back.</p>
+      </div>
+      <button class="btn" id="to-feedback">See where the facts went →</button>
+    </div>
+    <div class="split-head">
+      <div><div class="avatar" style="width:30px;height:30px;font-size:12px;background:#24211d;color:#fff">You</div>You <span class="tag">English</span></div>
+      <div><div class="avatar av-ayse" style="width:30px;height:30px;font-size:12px">AB</div>Ayşe <span class="tag">Türkçe · via interpreter</span></div>
+    </div>
+    <div class="turns" id="turns"><div class="turn-empty">Start with the most important thing she needs to do at home.</div></div>
+    <form class="compose" id="dc-form" autocomplete="off">
+      <div class="jargon" id="jargon">⚠️ <span></span></div>
+      <div class="row">
+        <input id="dc-input" placeholder='e.g. "Weigh him every morning before breakfast."' aria-label="Explain to Ayşe">
+        <button type="button" class="icon-btn mic" title="Speak" aria-label="Speak">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+        </button>
+        <button class="icon-btn send" aria-label="Send">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+    </form>
+    <div class="card checklist" id="checklist"><h4>What Ayşe can do at home</h4></div>
+  </section>
+
+  <!-- ================= 4. FEEDBACK ================= -->
+  <section class="screen" id="s-feedback">
+    <div class="screen-head">
+      <div>
+        <h1>Where every fact went</h1>
+        <p>Each fact is a line. It runs as far as it made it, and it stops where it was lost.</p>
+      </div>
+      <button class="btn ghost" id="restart">↺ New case</button>
+    </div>
+    <p class="summary" id="fb-summary"></p>
+    <div class="card mapcard">
+      <svg id="subway" viewBox="0 0 900 300" role="img" aria-label="Subway map of facts across ED, handoff and home"></svg>
+      <div class="legend">
+        <span><svg width="16" height="16"><circle cx="8" cy="8" r="5" fill="#1f8a5b"/></svg>Made it home</span>
+        <span><svg width="16" height="16"><circle cx="8" cy="8" r="5.5" fill="#fff" stroke="#cf3b2f" stroke-width="2.5"/></svg>Lost here</span>
+        <span><svg width="30" height="10"><line x1="0" y1="5" x2="30" y2="5" stroke="#b9b2a3" stroke-width="2" stroke-dasharray="4 4"/></svg>Never found</span>
+      </div>
+    </div>
+    <div class="threads" id="threads"></div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =============================================================================
+   Config
+============================================================================= */
+const params = new URLSearchParams(location.search);
+const API = (params.get('api') || window.WALTER_API || '').replace(/\/$/, '');
+const MOCK = !API;
+const STAGES = ['ed', 'handoff', 'discharge', 'feedback'];
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const state = {
+  id: null, stage: 'ed', reached: 0,
+  facts: [], hidden: 0, edLog: [],
+  handoffDone: false,
+  turns: [], checklist: [],
+};
+
+/* Plain-language swaps. Used client-side for the live "jargon catch" while typing. */
+const JARGON = {
+  'diuretic':'water pill', 'diuretics':'water pills', 'diuresis':'peeing off extra fluid', 'furosemide':'water pill (furosemide)',
+  'edema':'swelling', 'oedema':'swelling', 'sodium':'salt', 'dyspnea':'shortness of breath', 'dyspnoea':'shortness of breath',
+  'nsaid':'pain pills like ibuprofen', 'nsaids':'pain pills like ibuprofen', 'bid':'twice a day', 'tid':'three times a day',
+  'prn':'when needed', 'po':'by mouth', 'hypertension':'high blood pressure', 'exacerbation':'flare-up', 'titrate':'adjust',
+  'adherence':'taking it every day', 'compliance':'taking it every day', 'renal':'kidney', 'cardiac':'heart',
+  'heart failure':'weak heart pump', 'fluid restriction':'drinking less', 'orthopnea':'trouble breathing lying flat',
+};
+function findJargon(text) {
+  const t = ' ' + text.toLowerCase() + ' ';
+  return Object.keys(JARGON).filter(k => new RegExp('[^a-z]' + k.replace(' ', '\\s+') + '[^a-z]').test(t))
+    .map(term => ({ term, plain: JARGON[term] }));
+}
+
+/* =============================================================================
+   API layer (real fetch, or the mock below)
+============================================================================= */
+async function api(method, path, body) {
+  if (MOCK) {
+    await new Promise(r => setTimeout(r, 450 + Math.random() * 450));
+    return Mock.handle(method, path, body);
+  }
+  const res = await fetch(API + path, {
+    method, headers: body ? { 'Content-Type': 'application/json' } : {},
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) throw new Error(`${method} ${path} → ${res.status}`);
+  return res.json();
+}
+
+/* ---- normalizers: tolerate slightly different backend shapes ---- */
+function normFacts(r) {
+  const raw = r.facts || r.chart?.facts || r.chart || [];
+  const facts = (Array.isArray(raw) ? raw : []).map(f => ({
+    id: f.id ?? f.key ?? f.label,
+    label: f.label || f.text || f.name || f.id,
+    status: f.status || (f.discovered || f.found || f.unlocked ? 'found' : 'hidden'),
+    tone: f.tone || (f.critical || f.severity === 'high' ? 'bad' : 'good'),
+  }));
+  const hidden = r.hidden_count ?? r.hidden ?? facts.filter(f => f.status !== 'found').length;
+  return { facts, hidden, checklist: r.checklist ? normChecklist(r.checklist) : null };
+}
+function normChecklist(list) {
+  return (list || []).map(c => ({
+    id: c.id ?? c.label, label: c.label || c.text || c.id,
+    status: c.status || (c.done || c.understood ? 'ok' : 'pending'), note: c.note || c.reason || '',
+  }));
+}
+function normChat(r) {
+  return {
+    speaker: r.speaker || r.role || null,
+    text: r.reply || r.text || r.message || r.response || '',
+    en: r.reply_en || r.translation || r.english || r.text_en || '',
+    interp: r.interpreter_tr || r.interpreter || r.translated_input || r.input_tr || '',
+    unlocked: (r.unlocked || r.unlocked_facts || r.new_facts || []).map(u => typeof u === 'object' ? (u.id ?? u.label) : u),
+    checklist: r.checklist ? normChecklist(r.checklist) : null,
+    jargon: (r.jargon || r.jargon_flags || []).map(j => typeof j === 'string' ? { term: j, plain: JARGON[j.toLowerCase()] || '' } : j),
+  };
+}
+function normHandoff(r) {
+  return {
+    reply: r.reply || r.reaction || r.message || r.response || '',
+    question: r.follow_up || r.follow_up_question || r.question || '',
+    missing: (r.missing || r.missing_facts || r.gaps || []).map(m => typeof m === 'object' ? (m.label || m.text || m.id) : m),
+  };
+}
+const STAGE_ALIASES = { ed:'ed', er:'ed', interview:'ed', handoff:'handoff', sbar:'handoff', cardiology:'handoff', home:'home', discharge:'home', teaching:'home' };
+const GOOD = new Set(['found','handed_off','handedoff','passed','used','ok','understood','done','true','kept']);
+function normFeedback(r) {
+  const threads = (r.threads || []).map(t => ({
+    id: t.id ?? t.fact_id ?? t.label,
+    label: t.label || t.fact || t.name || t.id,
+    steps: (t.steps || []).map(s => ({
+      stage: STAGE_ALIASES[String(s.stage).toLowerCase()] || s.stage,
+      good: typeof s.status === 'boolean' ? s.status : GOOD.has(String(s.status).toLowerCase()),
+      status: String(s.status), note: s.note || s.detail || '',
+    })),
+  }));
+  return { threads, summary: r.summary || r.headline || '' };
+}
+
+/* =============================================================================
+   Navigation
+============================================================================= */
+function go(stage) {
+  state.stage = stage;
+  state.reached = Math.max(state.reached, STAGES.indexOf(stage));
+  $$('.screen').forEach(s => s.classList.toggle('on', s.id === 's-' + stage));
+  $$('.step').forEach(b => {
+    const i = STAGES.indexOf(b.dataset.s);
+    b.classList.toggle('active', b.dataset.s === stage);
+    b.classList.toggle('done', i < state.reached && b.dataset.s !== stage);
+    b.disabled = i > state.reached;
+  });
+  if (stage === 'handoff') renderRef();
+  if (stage === 'feedback') loadFeedback();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+$$('.step').forEach(b => b.onclick = () => go(b.dataset.s));
+$('#to-handoff').onclick = () => go('handoff');
+$('#to-discharge').onclick = () => go('discharge');
+$('#to-feedback').onclick = () => go('feedback');
+$('#restart').onclick = () => { location.reload(); };
+
+function toast(msg, err) {
+  const t = $('#toast'); t.textContent = msg; t.className = 'toast show' + (err ? ' err' : '');
+  clearTimeout(t._h); t._h = setTimeout(() => t.className = 'toast', 3200);
+}
+
+/* =============================================================================
+   1. ED
+============================================================================= */
+function renderChart(newIds = []) {
+  const found = state.facts.filter(f => f.status === 'found');
+  const box = $('#chart-chips');
+  box.innerHTML = found.map(f =>
+    `<span class="chip ${f.tone === 'bad' ? 'bad' : 'good'}" data-id="${esc(f.id)}">${esc(f.label)}</span>`).join('')
+    + (state.hidden > 0 ? `<span class="chip locked" id="locked">🔒 ${state.hidden} hidden</span>` : '')
+    + (!found.length && !state.hidden ? '<span class="empty">Nothing charted yet.</span>' : '');
+  newIds.forEach((id, i) => {
+    const el = box.querySelector(`[data-id="${CSS.escape(String(id))}"]`);
+    if (el) setTimeout(() => flyChip($('#walter-bubble'), el), i * 220);
+  });
+}
+
+function flyChip(fromEl, toEl) {
+  const a = fromEl.getBoundingClientRect(), b = toEl.getBoundingClientRect();
+  const g = toEl.cloneNode(true);
+  g.classList.add('fly');
+  const sx = a.left + a.width * 0.25, sy = a.top + a.height * 0.5;
+  g.style.left = sx + 'px'; g.style.top = sy + 'px';
+  document.body.appendChild(g);
+  toEl.style.visibility = 'hidden';
+  const dx = b.left - sx, dy = b.top - sy;
+  g.animate([
+    { transform: 'translate(0,0) scale(.7)', opacity: 0 },
+    { transform: `translate(${dx * .35}px,${dy * .35 - 70}px) scale(1.15)`, opacity: 1, offset: .4 },
+    { transform: `translate(${dx}px,${dy}px) scale(1)`, opacity: 1 },
+  ], { duration: 950, easing: 'cubic-bezier(.55,0,.2,1)' }).onfinish = () => {
+    g.remove(); toEl.style.visibility = ''; toEl.classList.add('pop');
+    const lk = $('#locked'); if (lk) { lk.classList.remove('pulse'); void lk.offsetWidth; lk.classList.add('pulse'); }
+  };
+}
+
+function renderEdHistory() {
+  const h = $('#ed-history');
+  h.innerHTML = state.edLog.slice(0, -1).map(m =>
+    `<div class="h ${m.who}"><b>${m.who === 'walter' ? 'Walter' : 'You'}:</b> ${esc(m.text)}</div>`).join('');
+  h.scrollTop = h.scrollHeight;
+}
+
+async function refreshSession() {
+  const r = normFacts(await api('GET', `/session/${state.id}`));
+  const before = new Set(state.facts.filter(f => f.status === 'found').map(f => f.id));
+  state.facts = r.facts; state.hidden = r.hidden;
+  if (r.checklist && !state.checklist.length) { state.checklist = r.checklist; renderChecklist(); }
+  return state.facts.filter(f => f.status === 'found' && !before.has(f.id)).map(f => f.id);
+}
+
+$('#ed-form').onsubmit = async e => {
+  e.preventDefault();
+  const input = $('#ed-input'), text = input.value.trim();
+  if (!text || !state.id) return;
+  input.value = '';
+  state.edLog.push({ who: 'me', text });
+  const bubble = $('#walter-bubble');
+  bubble.className = 'bubble-big typing';
+  bubble.innerHTML = `<span style="font-size:15px;display:block;margin-bottom:8px;color:#b8b0a2">You: ${esc(text)}</span><span class="dots"><span></span><span></span><span></span></span>`;
+  Face.mood('thinking');
+  try {
+    const r = normChat(await api('POST', `/session/${state.id}/chat`, { text, stage: 'ed' }));
+    state.edLog.push({ who: 'walter', text: r.text });
+    bubble.className = 'bubble-big';
+    bubble.textContent = `"${r.text.replace(/^"|"$/g, '')}"`;
+    renderEdHistory();
+    Face.mood(null); Face.say(r.text);
+    const fresh = await refreshSession();
+    if (fresh.length) Face.mood('caught', 1800);
+    renderChart([...new Set([...fresh, ...r.unlocked.filter(id => fresh.includes(id))])]);
+  } catch (err) {
+    Face.mood(null); bubble.className = 'bubble-big'; bubble.textContent = '…(connection dropped)';
+    toast(err.message, true);
+  }
+};
+
+/* =============================================================================
+   2. HANDOFF
+============================================================================= */
+$('#board-date').textContent = new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' · ' +
+  new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const sbarTA = $$('#sbar-form textarea');
+function autosize(t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }
+sbarTA.forEach(t => t.addEventListener('input', () => {
+  autosize(t);
+  const words = sbarTA.map(x => x.value).join(' ').trim().split(/\s+/).filter(Boolean).length;
+  $('#sbar-count').textContent = words + (words === 1 ? ' word' : ' words');
+}));
+let lastFocusedTA = sbarTA[1];
+sbarTA.forEach(t => t.addEventListener('focus', () => lastFocusedTA = t));
+
+function renderRef() {
+  const found = state.facts.filter(f => f.status === 'found');
+  $('#ref-chips').innerHTML = found.length
+    ? found.map(f => `<span class="chip ${f.tone === 'bad' ? 'bad' : 'good'}" title="Add to board">${esc(f.label)}</span>`).join('')
+    : '<span class="empty">You didn\'t chart anything in the ED.</span>';
+  $$('#ref-chips .chip').forEach(c => c.onclick = () => {
+    const t = lastFocusedTA; t.value = (t.value.trim() ? t.value.trim() + '; ' : '') + c.textContent;
+    autosize(t); t.dispatchEvent(new Event('input')); t.focus();
+  });
+}
+
+$('#sbar-form').onsubmit = async e => {
+  e.preventDefault();
+  const sbar = Object.fromEntries(sbarTA.map(t => [t.dataset.k, t.value.trim()]));
+  const text = ['s','b','a','r'].map(k => `${k.toUpperCase()}: ${sbar[k]}`).join('\n');
+  if (!Object.values(sbar).some(Boolean)) return toast('Write something on the board first.');
+  const out = $('#okafor-out');
+  out.innerHTML = '<div class="say wait">Dr. Okafor is reading…</div>';
+  try {
+    const r = normHandoff(await api('POST', `/session/${state.id}/handoff`, { text, sbar }));
+    out.innerHTML =
+      (r.reply ? `<div class="say">"${esc(r.reply.replace(/^"|"$/g, ''))}"</div>` : '') +
+      (r.question ? `<div class="say q">"${esc(r.question.replace(/^"|"$/g, ''))}"</div>` : '') +
+      (r.missing.length ? `<div class="missing"><h4>Not on the board</h4><ul>${r.missing.map(m => `<li>${esc(m)}</li>`).join('')}</ul></div>` : '');
+    state.handoffDone = true;
+    $('#to-discharge').disabled = false;
+  } catch (err) { out.innerHTML = '<div class="say wait">Page failed.</div>'; toast(err.message, true); }
+};
+
+/* =============================================================================
+   3. DISCHARGE
+============================================================================= */
+const dcInput = $('#dc-input'), jBox = $('#jargon');
+dcInput.addEventListener('input', () => {
+  const j = findJargon(dcInput.value);
+  if (j.length) {
+    jBox.querySelector('span').innerHTML = j.map(x =>
+      `Ayşe may not know <b>"${esc(x.term)}"</b>. Try <b>"${esc(x.plain)}"</b>`).join(' · ');
+    jBox.classList.add('show');
+  } else jBox.classList.remove('show');
+});
+
+function renderTurns() {
+  const box = $('#turns');
+  if (!state.turns.length) return;
+  box.innerHTML = state.turns.map(t => `
+    <div class="turn">
+      <div class="you"><span class="lbl">You said</span>"${esc(t.text)}"</div>
+      <div class="tr ${t.pending ? 'pending' : ''}">
+        ${t.interp ? `<div class="interp"><span class="lbl">Interpreter</span>${esc(t.interp)}</div>` : ''}
+        <span class="lbl">Ayşe</span>
+        <div class="ayse">${t.pending ? '<span class="dots">…</span>' : `"${esc(t.reply)}"`}</div>
+        ${t.en ? `<div class="gloss">${esc(t.en)}</div>` : ''}
+      </div>
+    </div>`).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+function renderChecklist(flashIds = []) {
+  const box = $('#checklist');
+  const ic = { ok: '✓', warn: '!', pending: '' };
+  box.innerHTML = '<h4>What Ayşe can do at home</h4>' + (state.checklist.length
+    ? state.checklist.map(c => `<div class="ck ${c.status} ${flashIds.includes(c.id) ? 'flash' : ''}">
+        <span class="ic">${ic[c.status] ?? ''}</span>${esc(c.label)}${c.note ? ` <span class="note">· ${esc(c.note)}</span>` : ''}</div>`).join('')
+    : '<span class="empty">Items appear as you teach.</span>');
+}
+
+$('#dc-form').onsubmit = async e => {
+  e.preventDefault();
+  const text = dcInput.value.trim();
+  if (!text || !state.id) return;
+  dcInput.value = ''; jBox.classList.remove('show');
+  const turn = { text, pending: true, interp: '', reply: '', en: '' };
+  state.turns.push(turn); renderTurns();
+  try {
+    const r = normChat(await api('POST', `/session/${state.id}/chat`, { text, stage: 'discharge' }));
+    Object.assign(turn, { pending: false, interp: r.interp, reply: r.text, en: r.en });
+    renderTurns();
+    if (r.checklist) {
+      const prev = Object.fromEntries(state.checklist.map(c => [c.id, c.status]));
+      state.checklist = r.checklist;
+      renderChecklist(r.checklist.filter(c => prev[c.id] !== c.status).map(c => c.id));
+    }
+    if (r.jargon.length) toast(`Jargon caught: "${r.jargon.map(j => j.term).join('", "')}"`);
+  } catch (err) { turn.pending = false; turn.reply = '…'; renderTurns(); toast(err.message, true); }
+};
+
+/* =============================================================================
+   4. FEEDBACK: subway map
+============================================================================= */
+const LINE_COLORS = ['#1f9d6b', '#7c6ee6', '#e2603a', '#2b8fd6', '#c7791a', '#d14d8b', '#5a9e2f', '#8a6d3b'];
+
+async function loadFeedback() {
+  $('#subway').innerHTML = '<text x="450" y="150" text-anchor="middle" fill="#8d877b" font-size="15">Tracing every fact…</text>';
+  try {
+    const fb = normFeedback(await api('GET', `/session/${state.id}/feedback`));
+    drawSubway(fb.threads);
+    const home = fb.threads.filter(t => t.steps.length && t.steps.every(s => s.good)).length;
+    $('#fb-summary').textContent = fb.summary || `${home} of ${fb.threads.length} key facts made it all the way home.`;
+    $('#threads').innerHTML = fb.threads.map((t, i) => `
+      <div class="card thread">
+        <div class="t"><i style="background:${LINE_COLORS[i % LINE_COLORS.length]}"></i>${esc(t.label)}</div>
+        <ol>${t.steps.map(s => `<li class="${s.good ? 'good' : 'bad'}">${esc(stageName(s.stage))}: ${esc(s.status.replace(/_/g, ' '))}${s.note ? `, ${esc(s.note)}` : ''}</li>`).join('')}</ol>
+      </div>`).join('');
+  } catch (err) { toast(err.message, true); }
+}
+const stageName = s => ({ ed: 'ED', handoff: 'Handoff', home: 'Home' }[s] || s);
+
+function drawSubway(threads) {
+  const svg = $('#subway');
+  const W = 900, top = 70, rowH = 52, H = top + threads.length * rowH + 20;
+  const X = { ed: 70, handoff: 380, home: 690 };
+  const order = ['ed', 'handoff', 'home'];
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  let s = '';
+  order.forEach(k => {
+    s += `<text class="stn-label" x="${X[k]}" y="30" text-anchor="middle">${stageName(k)}</text>`;
+    s += `<line class="grid" x1="${X[k]}" y1="44" x2="${X[k]}" y2="${H - 10}"/>`;
+  });
+  threads.forEach((t, i) => {
+    const y = top + i * rowH + 10, c = LINE_COLORS[i % LINE_COLORS.length];
+    const steps = order.map(k => t.steps.find(st => st.stage === k)).filter(Boolean);
+    const firstBad = steps.findIndex(st => !st.good);
+    const title = `<title>${esc(t.label)}: ${steps.map(st => stageName(st.stage) + ' ' + st.status).join(' → ')}</title>`;
+    let g = '';
+    if (firstBad === 0) {
+      // never found in the ED
+      g += `<line x1="${X.ed + 12}" y1="${y}" x2="${X.home}" y2="${y}" stroke="#c9c2b2" stroke-width="2" stroke-dasharray="5 6"/>`;
+      g += ring(X.ed, y);
+      g += `<rect x="${X.ed + 22}" y="${y - 13}" width="${t.label.length * 9 + 100}" height="26" fill="#fffefb"/>`;
+      g += `<text class="row-label lost" x="${X.ed + 28}" y="${y + 5}">${esc(t.label)}, never asked</text>`;
+    } else {
+      const endK = firstBad === -1 ? order[steps.length - 1] : steps[firstBad].stage;
+      const x2 = X[endK];
+      g += `<line x1="${X.ed}" y1="${y}" x2="${x2}" y2="${y}" stroke="${c}" stroke-width="7" stroke-linecap="round" class="ln" style="--len:${x2 - X.ed}"/>`;
+      steps.forEach((st, j) => {
+        if (j < (firstBad === -1 ? steps.length - 1 : firstBad))
+          g += `<circle cx="${X[st.stage]}" cy="${y}" r="5" fill="#fff" stroke="${c}" stroke-width="2.5"/>`;
+      });
+      if (firstBad === -1) g += `<circle cx="${x2}" cy="${y}" r="9" fill="${c}" stroke="#fff" stroke-width="3"/>`;
+      else g += ring(x2, y);
+      g += `<text class="row-label" x="${x2 + 18}" y="${y + 5}">${esc(t.label)}</text>`;
+    }
+    s += `<g style="animation:fade .4s ease ${i * 90}ms both">${title}${g}</g>`;
+  });
+  svg.innerHTML = s;
+  // draw-in animation for the lines
+  svg.querySelectorAll('.ln').forEach((l, i) => {
+    const len = +l.style.getPropertyValue('--len');
+    l.style.strokeDasharray = len; l.style.strokeDashoffset = len;
+    l.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: 900, delay: 150 + i * 110, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' });
+  });
+}
+const ring = (x, y) => `<circle cx="${x}" cy="${y}" r="9" fill="#fff" stroke="#cf3b2f" stroke-width="3.5"/><line x1="${x - 4}" y1="${y}" x2="${x + 4}" y2="${y}" stroke="#cf3b2f" stroke-width="2.5"/>`;
+
+/* =============================================================================
+   Walter's face: blink, talk, think, "caught"
+============================================================================= */
+const Face = (() => {
+  const svg = $('#walter-face'), eyes = $('#eyes'), mouth = $('#mouth-open'), line = $('#mouth-line');
+  let talking = null, voice = false, moodT;
+  (function blink() {
+    eyes.classList.add('blink');
+    setTimeout(() => eyes.classList.remove('blink'), 120);
+    setTimeout(blink, 2200 + Math.random() * 3200);
+  })();
+  function flap(on) {
+    clearInterval(talking);
+    if (!on) { mouth.setAttribute('ry', 0); line.style.opacity = 1; return; }
+    line.style.opacity = 0;
+    talking = setInterval(() => mouth.setAttribute('ry', [2, 5, 8, 4, 9, 3][Math.random() * 6 | 0]), 110);
+  }
+  function pickVoice() {
+    const vs = speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang));
+    return vs.find(v => /daniel|fred|alex|male|guy|george|david/i.test(v.name)) || vs[0];
+  }
+  function say(text) {
+    if (voice && 'speechSynthesis' in window) {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.voice = pickVoice(); u.pitch = .7; u.rate = .95;
+      u.onstart = () => flap(true); u.onend = u.onerror = () => flap(false);
+      speechSynthesis.speak(u);
+      return;
+    }
+    flap(true);
+    setTimeout(() => flap(false), Math.min(6500, 900 + text.length * 45));
+  }
+  function mood(m, ms) {
+    clearTimeout(moodT);
+    svg.classList.remove('thinking', 'caught');
+    if (m) svg.classList.add(m);
+    if (ms) moodT = setTimeout(() => svg.classList.remove(m), ms);
+  }
+  const vb = $('#voice-btn');
+  if (!('speechSynthesis' in window)) vb.style.display = 'none';
+  vb.onclick = () => {
+    voice = !voice; vb.classList.toggle('on', voice); vb.textContent = voice ? '🔊' : '🔇';
+    if (!voice) { speechSynthesis.cancel(); flap(false); }
+  };
+  return { say, mood };
+})();
+
+/* =============================================================================
+   Voice input (Chrome / Edge). Hidden if unsupported.
+============================================================================= */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+$$('.mic').forEach(btn => {
+  if (!SR) { btn.style.display = 'none'; return; }
+  btn.onclick = () => {
+    const form = btn.closest('form'), input = form.querySelector('input');
+    const rec = new SR(); rec.lang = 'en-US'; rec.interimResults = true;
+    btn.classList.add('rec');
+    rec.onresult = ev => { input.value = [...ev.results].map(r => r[0].transcript).join(''); input.dispatchEvent(new Event('input')); };
+    rec.onend = () => { btn.classList.remove('rec'); if (input.value.trim()) form.requestSubmit(); };
+    rec.onerror = () => btn.classList.remove('rec');
+    rec.start();
+  };
+});
+
+/* =============================================================================
+   Boot
+============================================================================= */
+let t0 = Date.now();
+setInterval(() => {
+  const s = Math.floor((Date.now() - t0) / 1000);
+  $('#timer').textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+}, 1000);
+
+(async function boot() {
+  const m = $('#mode');
+  if (!MOCK) { m.textContent = 'Live API'; m.classList.add('live'); m.title = API; }
+  else m.title = 'Add ?api=http://localhost:8000 to the URL to use the real backend';
+  go('ed');
+  try {
+    const r = await api('POST', '/session', {});
+    state.id = r.session_id ?? r.id ?? r.sessionId;
+    const p = r.patient;
+    if (p) $('#chart-meta').textContent = `${p.name || 'Walter B.'} · ${p.age || 72} ${p.sex || 'M'} · CC: ${p.chief_complaint || 'shortness of breath'}`;
+    await refreshSession(); renderChart(); renderChecklist();
+    t0 = Date.now();
+    $('#ed-input').focus();
+  } catch (err) { toast('Could not start a case: ' + err.message, true); }
+})();
+
+/* =============================================================================
+   MOCK BACKEND: mirrors the contract above so the UI is demoable alone.
+   Delete or ignore once the real API is up.
+============================================================================= */
+const Mock = (() => {
+  const FACTS = [
+    { id: 'spo2',   label: 'SpO₂ 84% on room air', tone: 'good', start: true },
+    { id: 'breath', label: '5 days worse breathing', tone: 'good' },
+    { id: 'ankles', label: 'Ankles swollen', tone: 'good' },
+    { id: 'weight', label: 'Up ~9 lb this week', tone: 'good' },
+    { id: 'ayse',   label: 'Wife Ayşe runs his pills (Turkish)', tone: 'good' },
+    { id: 'pill',   label: 'Skips water pill on bowling days', tone: 'bad', secret: true },
+    { id: 'ibu',    label: 'Takes ibuprofen for his knee', tone: 'bad', secret: true },
+    { id: 'salt',   label: 'Deli pastrami & pickles', tone: 'bad', secret: true },
+  ];
+  // Order matters: first match wins.
+  const ED_RULES = [
+    { id: 'ibu', re: /pain|ibuprofen|advil|motrin|aleve|over.the.counter|\botc\b|knee|anything else.*take|supplement|vitamin|drugstore/,
+      say: "Advil. For the knee. Two, sometimes four a day. It's from the drugstore, it doesn't count." },
+    { id: 'pill', re: /(miss|skip|forget|forgot|honest|really|every day|everyday|always|sometimes|doses?)/, need: /med|pill|tablet|prescri|water|diuretic|lasix|take|dose/,
+      say: "…Fine. Bowling's Tuesdays and Thursdays. You try rolling a 200 when you gotta pee every ten minutes. So I skip it those days. Don't tell Ayşe." },
+    { re: /med|pill|tablet|prescri|lasix|diuretic/, say: "Water pill, the heart one, the little white one. I take 'em like a saint. Next question." },
+    { id: 'salt', re: /eat|food|diet|salt|meal|cook|deli|snack|restaurant/,
+      say: "Ayşe cooks healthy. Then I go to the deli. Pastrami, pickles. A man has needs." },
+    { id: 'weight', re: /weight|weigh|scale|gain|pants|belt|pounds|kilo/,
+      say: "Pants are tight. Up maybe nine pounds this week. Ayşe says it's the baklava." },
+    { id: 'ayse', re: /wife|home|live|alone|family|who.*(help|manage|pill|med)|support|married|daughter|son/,
+      say: "Ayşe. Forty-six years. She does the pills, the calendar, the yelling. Her English is so-so. She likes Turkish better." },
+    { id: 'ankles', re: /ankle|leg|swell|feet|foot|sock/,
+      say: "Socks leave dents, like a pie crust. Fat ankles. So what." },
+    { id: 'breath', re: /breath|bring|why.*here|wrong|happen|feel|problem|trouble|today|symptom|chest/,
+      say: "Can't walk to the mailbox without stopping. Five days now. Ayşe made me come. Happy?" },
+    { re: /^(hi|hello|hey|good (morning|evening|afternoon))|my name|i'?m (dr|doctor)/, say: "Another one. What are you, twelve? Go ahead, kid." },
+  ];
+  const HANDOFF_RE = {
+    spo2: /spo2|sat|84|oxygen|\bo2\b|hypox/, breath: /breath|dyspn|\bsob\b|short/, ankles: /ankle|edema|oedema|swell/,
+    weight: /weight|\bkg\b|\blb|pound|gain/, ayse: /wife|ay[sş]e|turkish|interpreter|caregiver/,
+    pill: /skip|miss|adheren|complian|bowling|non.?adh/, ibu: /ibuprofen|nsaid|advil|motrin|pain med/, salt: /salt|sodium|pastrami|pickle|diet|deli/,
+  };
+  const OKAFOR_Q = [
+    ['ibu', "What pain meds is he on?"], ['pill', "Is he actually taking his diuretic?"],
+    ['ayse', "Who manages his meds at home?"], ['salt', "What's he eating?"],
+  ];
+  const ITEMS = [
+    { id: 'weigh', label: 'Weigh daily', re: /weigh|scale|weight/, fact: 'weight',
+      tr: 'Onu her sabah kahvaltıdan önce tartın.', back: 'Her sabah kahvaltıdan önce tartacağım, tamam.', en: "I'll weigh him every morning before breakfast, okay." },
+    { id: 'pill', label: 'Water pill every day', re: /pill|diuretic|furosemide|lasix|medic/, fact: 'pill',
+      tr: 'Su hapını her gün alsın, bowling günleri de.', back: 'Her gün, bowling günü bile. Hapı ona ben vereceğim.', en: "Every day, even bowling days. I'll hand it to him myself.",
+      trJ: 'Diüretiğini her gün alsın.', backJ: 'Diüretik mi? O ne demek, hangi hap?', enJ: 'Diuretic? What does that mean, which pill?' },
+    { id: 'salt', label: 'Low salt', re: /salt|sodium|pickle|pastrami|deli/, fact: 'salt',
+      tr: 'Tuzu azaltın. Turşu ve pastırma yok.', back: 'Tuz yok, turşu yok. Pastırmayı saklayacağım.', en: "No salt, no pickles. I'll hide the pastrami.",
+      trJ: 'Sodyumu kısıtlayın.', backJ: 'Sodyum… o ne? Anlamadım.', enJ: "Sodium… what's that? I didn't understand." },
+    { id: 'ibu', label: 'No ibuprofen', re: /ibuprofen|advil|nsaid|motrin|aleve|pain/, fact: 'ibu',
+      tr: 'Dizi ağrısa bile Advil almasın. Kalbine zarar veriyor.', back: 'Advil yok, dizi ağrısa bile. Anladım.', en: 'No Advil, even if his knee hurts. Understood.',
+      trJ: 'NSAİİ kullanmasın.', backJ: 'Bu kısaltma ne demek?', enJ: 'What does that abbreviation mean?' },
+    { id: 'call', label: 'When to call', re: /call|come back|911|emergen|worse|return|breath/, fact: 'breath',
+      tr: 'Nefesi daralırsa ya da kilosu hızla artarsa hemen arayın.', back: 'Nefesi daralırsa ya da kilo alırsa hemen arıyorum.', en: "If his breathing gets worse or he gains weight, I call right away." },
+  ];
+  const S = {};
+  let n = 0;
+
+  function handle(method, path, body = {}) {
+    const p = path.split('/').filter(Boolean); // ['session', id, ...]
+    if (method === 'POST' && p.length === 1) {
+      const id = 'mock-' + (++n);
+      S[id] = { found: new Set(FACTS.filter(f => f.start).map(f => f.id)), handed: new Set(), check: {}, handoffText: '' };
+      ITEMS.forEach(i => S[id].check[i.id] = { status: 'pending', note: '' });
+      return { session_id: id, patient: { name: 'Walter B.', age: 72, sex: 'M', chief_complaint: 'shortness of breath' } };
+    }
+    const s = S[p[1]];
+    if (!s) throw new Error('mock: unknown session');
+    if (method === 'GET' && p.length === 2) return {
+      stage: 'ed',
+      facts: FACTS.map(f => ({ id: f.id, label: f.label, tone: f.tone, status: s.found.has(f.id) ? 'found' : 'hidden' })),
+      hidden_count: FACTS.filter(f => f.secret && !s.found.has(f.id)).length,
+      checklist: checklist(s),
+    };
+    if (p[2] === 'chat') return body.stage === 'discharge' ? discharge(s, body.text) : ed(s, body.text);
+    if (p[2] === 'handoff') return handoff(s, body.text);
+    if (p[2] === 'feedback') return feedback(s);
+    throw new Error('mock: no route ' + path);
+  }
+
+  function ed(s, text) {
+    const t = text.toLowerCase();
+    for (const r of ED_RULES) {
+      if (!r.re.test(t) || (r.need && !r.need.test(t))) continue;
+      if (r.id && s.found.has(r.id)) return { speaker: 'walter', reply: "I told you already. Write it down, kid.", unlocked: [] };
+      if (r.id) s.found.add(r.id);
+      return { speaker: 'walter', reply: r.say, unlocked: r.id ? [r.id] : [] };
+    }
+    return { speaker: 'walter', reply: 'Ha. Next question, kid.', unlocked: [] };
+  }
+
+  function handoff(s, text) {
+    const t = text.toLowerCase();
+    s.handoffText = t; s.handed = new Set();
+    Object.entries(HANDOFF_RE).forEach(([id, re]) => { if (s.found.has(id) && re.test(t)) s.handed.add(id); });
+    const missing = FACTS.filter(f => s.found.has(f.id) && !s.handed.has(f.id)).map(f => f.label);
+    const q = OKAFOR_Q.find(([id]) => !s.handed.has(id));
+    const reply = s.handed.has('pill')
+      ? "Okay. If he's skipping the diuretic, that's probably the whole story. IV diuresis, and I'll get pharmacy to simplify his regimen."
+      : "Got it. Sounds like an HF exacerbation. I'll start IV diuresis.";
+    return { reply, follow_up: q ? q[1] : "Clean handoff. I've got him.", missing };
+  }
+
+  function discharge(s, text) {
+    const t = text.toLowerCase();
+    const jar = findJargon(text);
+    const hits = ITEMS.filter(i => i.re.test(t));
+    if (!hits.length) return { speaker: 'ayse', interpreter_tr: '(Tercüman çeviriyor…)', reply: 'Anlamadım, tekrar eder misiniz?', reply_en: "I didn't understand, could you say that again?", checklist: checklist(s), jargon: jar };
+    const tr = [], back = [], en = [];
+    hits.forEach(i => {
+      const j = i.trJ && jar.length;
+      tr.push(j ? i.trJ : i.tr); back.push(j ? i.backJ : i.back); en.push(j ? i.enJ : i.en);
+      s.check[i.id] = j ? { status: 'warn', note: `you said "${jar[0].term}"` } : { status: 'ok', note: '' };
+    });
+    return { speaker: 'ayse', interpreter_tr: tr.join(' '), reply: back.join(' '), reply_en: en.join(' '), checklist: checklist(s), jargon: jar };
+  }
+  const checklist = s => ITEMS.map(i => ({ id: i.id, label: i.label, ...s.check[i.id] }));
+
+  function feedback(s) {
+    const threadFacts = ['pill', 'ayse', 'salt', 'ibu', 'weight', 'breath'];
+    const LBL = { pill: 'Water pill', ayse: 'Ayşe', salt: 'Salt', ibu: 'Ibuprofen', weight: 'Weight gain', breath: 'Breathing' };
+    const anyOk = Object.values(s.check).some(c => c.status === 'ok');
+    const threads = threadFacts.map(id => {
+      const item = ITEMS.find(i => i.fact === id);
+      const homeOk = id === 'ayse' ? anyOk : item && s.check[item.id].status === 'ok';
+      const homeNote = id === 'ayse' ? (anyOk ? 'taught in a way she understood' : 'nothing landed with her')
+        : s.check[item.id].status === 'warn' ? s.check[item.id].note : homeOk ? '' : 'never taught';
+      return { id, label: LBL[id], steps: [
+        { stage: 'ed', status: s.found.has(id) ? 'found' : 'never', note: s.found.has(id) ? '' : 'never asked' },
+        { stage: 'handoff', status: s.handed.has(id) ? 'handed_off' : 'lost' },
+        { stage: 'home', status: homeOk ? 'used' : 'lost', note: homeNote },
+      ]};
+    });
+    const lost = threads.filter(t => t.steps.some(x => !['found','handed_off','used'].includes(x.status)));
+    const worst = threads.find(t => t.id === 'ibu' && t.steps[0].status === 'never');
+    return { threads, summary: worst
+      ? `${threads.length - lost.length} of ${threads.length} facts made it home. Nobody asked about pain meds, so he'll keep taking Advil.`
+      : `${threads.length - lost.length} of ${threads.length} facts made it home.` };
+  }
+  return { handle };
+})();
+</script>
+</body>
+</html>
