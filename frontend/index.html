@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Walter · ED → Handoff → Home</title>
+<title>Handoff Sim · ED → Handoff → Home</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kalam:wght@400;700&family=Permanent+Marker&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
@@ -15,7 +15,12 @@
   differences in the backend's JSON are fine. Enable CORS in FastAPI:
      app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-  POST /session
+  GET /cases                                    (optional; built-in list is used if missing)
+     → { "cases": [ {"id":"walter","name":"Walter B.","age":72,"sex":"M","location":"ED · Bay 4",
+                     "chief_complaint":"Short of breath for 5 days","route":["ED","Cardiology","Home"],
+                     "tags":["Heart failure"],"caregiver_language":"tr","minutes":15,"available":true} ] }
+
+  POST /session   body: { "case_id": "walter" }
      → { "session_id": "abc", "patient": {"name":"Walter B.","age":72,"sex":"M"},
          "caregiver": {"name":"Ayşe","relation":"wife","language":"tr"} }
        caregiver.language is an ISO code ("tr", "es", "en"…). The UI shows its name automatically
@@ -79,6 +84,30 @@ header{position:sticky;top:0;z-index:20;background:rgba(246,242,232,.92);backdro
 .mode{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--rule);color:var(--ink-2);white-space:nowrap}
 .mode.live{color:var(--ok);border-color:#b9dfcb;background:var(--ok-bg)}
 
+/* ---------- portal ---------- */
+.back-link{border:0;background:none;color:var(--ink-2);font-weight:500;font-size:14px;padding:6px 10px;border-radius:8px;white-space:nowrap}
+.back-link:hover{background:var(--paper-2)}
+body.in-portal .steps{visibility:hidden}
+body.in-portal .back-link{display:none}
+.cases{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px}
+.case{padding:20px;display:flex;flex-direction:column;gap:12px;transition:transform .15s ease,box-shadow .15s ease}
+.case.ready{border-color:#e8c99a}
+.case.ready:hover{transform:translateY(-2px);box-shadow:0 14px 30px -16px rgba(120,70,10,.45)}
+.case-top{display:flex;align-items:center;gap:12px}
+.case-top h3{margin:0;font:600 19px var(--serif)}
+.case-top .sub{font-size:13px;color:var(--ink-3)}
+.badge{margin-left:auto;font-size:11.5px;font-weight:600;padding:4px 9px;border-radius:999px;white-space:nowrap}
+.badge.ready{background:var(--ok-bg);color:#17694a}
+.badge.soon{background:#eee9dd;color:var(--ink-3)}
+.case .cc{margin:0;font:500 16px/1.4 var(--serif)}
+.case .route{font-size:13px;color:var(--ink-2);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.case .route i{font-style:normal;color:var(--ink-3)}
+.case .tags{display:flex;flex-wrap:wrap;gap:6px}
+.case .tags span{font-size:12px;background:#f1ece0;color:var(--ink-2);padding:3px 8px;border-radius:6px}
+.case .btn{margin-top:auto;justify-content:center}
+.case.locked{opacity:.62}
+.case.locked .avatar{filter:grayscale(1)}
+
 main{max-width:1200px;margin:0 auto;padding:28px 24px 60px}
 .screen{display:none;animation:fade .35s ease}
 .screen.on{display:block}
@@ -94,7 +123,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 24px 60px}
 
 /* ---------- ED: video call ---------- */
 .ed{display:grid;grid-template-columns:1.15fr .85fr;gap:20px;align-items:start}
-.call{background:#1c1a17;color:#f3eee4;border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px;min-height:560px;box-shadow:0 20px 50px -25px rgba(0,0,0,.6);position:relative;overflow:hidden}
+.call{background:#1c1a17;color:#f3eee4;border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 50px -25px rgba(0,0,0,.6);position:relative;overflow:hidden}
 .call::before{content:"";position:absolute;inset:0;background:radial-gradient(600px 300px at 20% 0%,rgba(199,121,26,.22),transparent 70%);pointer-events:none}
 .call-top{display:flex;align-items:center;gap:12px;position:relative}
 .avatar{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;font-weight:700;flex:none}
@@ -111,24 +140,43 @@ main{max-width:1200px;margin:0 auto;padding:28px 24px 60px}
 .video>svg{width:100%;height:100%;display:block}
 .video-top{position:absolute;inset:0 0 auto 0;display:flex;align-items:center;gap:12px;padding:12px 14px 26px;background:linear-gradient(rgba(0,0,0,.55),transparent)}
 .video-top .who{font-weight:600;font-size:16px}.video-top .sub{font-size:12px;color:#d0c8bb}
-.voice-btn{border:0;background:rgba(0,0,0,.4);color:#fff;border-radius:999px;width:34px;height:34px;font-size:15px}
-.voice-btn.on{background:var(--walter)}
 .flag{margin:6px 0;padding:8px 10px;border:1.5px solid #cf3b2f;border-radius:10px;background:#fdecea;color:#7a1f17;font-size:14px}
 .flag.soft{border-color:#c7791a;background:#fdf4e6;color:#6b4208}
 .interp-toggle{display:flex;gap:8px;align-items:center;justify-content:flex-start;width:100%;font-size:14px;color:#5d574c;margin:0 0 8px;cursor:pointer}
-.interp-toggle input{flex:none;width:16px;height:16px;margin:0;padding:0}
+.compose .interp-toggle input{flex:none;width:16px;height:16px;margin:0;padding:0}
 .rescued{font-size:12px;font-weight:500;color:#7c6ee6}
 .say.pharm{border-left:3px solid #7c6ee6;padding-left:10px;font-style:normal}
-.pip{position:absolute;right:12px;bottom:12px;width:74px;height:96px;border-radius:10px;background:#3a3732;border:2px solid rgba(255,255,255,.25);overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end}
-.pip svg{width:100%;height:auto}.pip span{position:absolute;left:6px;top:4px;font-size:10px;color:#ddd}
-#head-g{animation:breathe 4.5s ease-in-out infinite}
+.pip{position:absolute;right:12px;bottom:12px;width:136px;height:102px;border-radius:12px;background:#3a3732;border:2px solid rgba(255,255,255,.3);overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;box-shadow:0 8px 20px -8px rgba(0,0,0,.6)}
+.pip svg{width:100%;height:auto}
+.pip video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:none}
+.pip.live video{display:block}.pip.live svg{display:none}
+.pip span{position:absolute;left:7px;top:5px;font-size:10.5px;color:#fff;z-index:1;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.call-cg::before{background:radial-gradient(600px 300px at 20% 0%,rgba(36,99,199,.28),transparent 70%)}
+.call-cg .talk{background:var(--ayse);color:#fff}
+.call-cg .ask input:focus{border-color:var(--ayse)}
+.call-cg .icon-btn.send{background:var(--ayse);border-color:var(--ayse);color:#fff}
+.call .interp-toggle{color:#cfc6b8;margin:0;position:relative}
+.call .interp-toggle input{flex:none;width:16px;height:16px;margin:0;accent-color:var(--ayse)}
+.dc-log .h.cg b{color:#9cc0ff}
+.dc-log .h.cg.latest{border-left-color:var(--ayse)}
+.dc-log .h.interp-line{color:#9dbcf0;font-style:italic;font-size:14px}
+.dc-log .h.interp-line b{color:#7ea6e6;font-style:normal}
+.dc-log .gloss{font:400 13.5px var(--sans);color:#8d9ab0;margin-top:3px}
+.dc-log .flag{margin:2px 0}
+.dc-side h4{margin:4px 0 10px;font:600 11px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.dc-side .ck{padding:9px 0;border-bottom:1px dashed var(--rule);flex-wrap:wrap}
+.dc-side .ck .note{flex-basis:100%;padding-left:28px}
+.talk{touch-action:none;user-select:none;-webkit-user-select:none}
+.talk small{font-weight:500;opacity:.65;font-size:12px}
+.face .head-g{animation:breathe 4.5s ease-in-out infinite}
 @keyframes breathe{50%{transform:translateY(1.6px)}}
-#eyes,#brows,#pupils{transform-box:fill-box;transform-origin:center;transition:transform .25s ease}
-#eyes.blink{transform:scaleY(.1);transition-duration:.07s}
-#walter-face.thinking #pupils{transform:translate(-4px,-3px)}
-#walter-face.thinking #brows{transform:translateY(3px)}
-#walter-face.caught #brows{transform:translateY(-7px)}
-#walter-face.caught #pupils{transform:scale(1.15)}
+.face .eyes,.face .brows,.face .pupils{transform-box:fill-box;transform-origin:center;transition:transform .25s ease}
+.face .eyes.blink{transform:scaleY(.1);transition-duration:.07s}
+.face.thinking .pupils{transform:translate(-4px,-3px)}
+.face.thinking .brows{transform:translateY(3px)}
+#ayse-face.thinking .brows{transform:translateY(-3px)}
+.face.caught .brows{transform:translateY(-7px)}
+.face.caught .pupils{transform:scale(1.15)}
 .ecg{stroke-dasharray:140;animation:ecg 1.6s linear infinite}
 @keyframes ecg{from{stroke-dashoffset:140}to{stroke-dashoffset:0}}
 .bubble-big{font:500 21px/1.35 var(--serif);background:#2a2722;border-radius:18px;padding:22px 24px;position:relative;border-left:4px solid var(--walter);min-height:96px}
@@ -136,13 +184,25 @@ main{max-width:1200px;margin:0 auto;padding:28px 24px 60px}
 .bubble-big .dots span{display:inline-block;width:8px;height:8px;margin-right:5px;border-radius:50%;background:#8d857a;animation:dot 1s infinite}
 .bubble-big .dots span:nth-child(2){animation-delay:.15s}.bubble-big .dots span:nth-child(3){animation-delay:.3s}
 @keyframes dot{40%{transform:translateY(-5px)}}
-.history{max-height:150px;overflow:auto;display:flex;flex-direction:column;gap:6px;font-size:13.5px;padding-right:4px;position:relative}
+.history{flex:1;min-height:60px;max-height:260px;overflow:auto;display:flex;flex-direction:column;gap:8px;font-size:15px;padding-right:4px;position:relative}
+.history .h.latest{color:#f3eee4;font:500 18px/1.4 var(--serif);border-left:3px solid var(--walter);padding-left:12px}
+.history .h.latest b{font:600 13px var(--sans)}
+.history .h.wait{color:#8d857a;font-style:italic}
 .history .h{color:#a39b8e} .history .h b{color:#e7dfd1;font-weight:500}
 .history .h.walter b{color:#ffc477}
 .ask{display:flex;gap:8px;position:relative}
 .ask input{flex:1;background:#2a2722;border:1px solid #3a362f;border-radius:12px;padding:13px 14px;color:#f3eee4;outline:none}
 .ask input:focus{border-color:var(--walter)}
 .ask input::placeholder{color:#8d857a}
+.talk{flex:1;display:flex;align-items:center;justify-content:center;gap:10px;padding:15px;border-radius:14px;border:0;background:var(--walter);color:#1c1a17;font-weight:600;font-size:16px}
+.talk:hover{filter:brightness(1.08)}
+.talk.rec{background:#e5484d;color:#fff;animation:ring 1.3s infinite}
+@keyframes ring{0%{box-shadow:0 0 0 0 rgba(229,72,77,.55)}100%{box-shadow:0 0 0 16px rgba(229,72,77,0)}}
+.ask.voice input,.ask.voice .send{display:none}
+.ask:not(.voice):not(.mic-too) .talk{display:none}
+.ask.mic-too .talk{flex:0 0 52px;padding:0}
+.ask.mic-too .talk span{display:none}
+.history .h.interim{font-style:italic;opacity:.75}
 .icon-btn{width:46px;border-radius:12px;border:1px solid #3a362f;background:#2a2722;color:#e7dfd1;display:grid;place-items:center}
 .icon-btn.rec{background:#e5484d;border-color:#e5484d;color:#fff}
 .icon-btn.send{background:var(--walter);border-color:var(--walter);color:#1c1a17}
@@ -250,7 +310,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 24px 60px}
 .thread li.bad{color:var(--bad)}
 .thread li.good{color:#17694a}
 
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#24211d;color:#f3eee4;padding:10px 16px;border-radius:10px;font-size:14px;z-index:200;display:none}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#24211d;color:#f3eee4;padding:10px 16px;border-radius:10px;font-size:14px;z-index:200;display:none;max-width:min(640px,90vw);text-align:center}
 .toast.show{display:block;animation:fade .25s}
 .toast.err{background:var(--bad)}
 
@@ -265,7 +325,8 @@ main{max-width:1200px;margin:0 auto;padding:28px 24px 60px}
 
 <header>
   <div class="bar">
-    <div class="brand">Walter <span>· one patient, three handoffs</span></div>
+    <div class="brand">Handoff Sim <span>· one patient, three handoffs</span></div>
+    <button class="back-link" id="back-link" title="Back to all cases">← All cases</button>
     <nav class="steps" id="steps">
       <button class="step" data-s="ed"><b>1</b><span>ED</span></button>
       <button class="step" data-s="handoff"><b>2</b><span>Handoff</span></button>
@@ -277,19 +338,29 @@ main{max-width:1200px;margin:0 auto;padding:28px 24px 60px}
 </header>
 
 <main>
+  <!-- ================= 0. ASSIGNMENTS PORTAL ================= -->
+  <section class="screen" id="s-portal">
+    <div class="screen-head">
+      <div>
+        <h1>Your assignments</h1>
+        <p>Pick a patient. Each case follows one patient from the ED, through a handoff, to discharge home.</p>
+      </div>
+    </div>
+    <div class="cases" id="cases"><div class="empty">Loading cases…</div></div>
+  </section>
+
   <!-- ================= 1. ED ================= -->
   <section class="screen" id="s-ed">
     <div class="screen-head">
       <div>
         <h1>Emergency department</h1>
-        <p>Walter is 72 and short of breath. He's funny, he's grumpy, and he isn't telling you everything.</p>
       </div>
       <button class="btn" id="to-handoff">Hand off to cardiology →</button>
     </div>
     <div class="ed">
       <div class="call">
         <div class="video">
-          <svg id="walter-face" viewBox="0 0 480 300" aria-label="Walter, on video">
+          <svg id="walter-face" class="face" viewBox="0 0 480 300" aria-label="Walter, on video">
             <defs>
               <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3d4148"/><stop offset="1" stop-color="#25272c"/></linearGradient>
               <radialGradient id="lamp" cx=".5" cy=".35" r=".6"><stop offset="0" stop-color="#ffd9a0" stop-opacity=".28"/><stop offset="1" stop-color="#ffd9a0" stop-opacity="0"/></radialGradient>
@@ -306,7 +377,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 24px 60px}
               <text x="8" y="56" font-size="10" font-family="Inter,sans-serif" fill="#ffb54d">SpO₂ 84</text>
               <text x="58" y="56" font-size="10" font-family="Inter,sans-serif" fill="#44d38a">♥ 104</text>
             </g>
-            <g id="head-g">
+            <g class="head-g">
               <path d="M104 300 C114 236 168 214 240 211 C312 214 366 236 376 300 Z" fill="url(#gown)"/>
               <path d="M206 212 L240 250 L274 212 Z" fill="#cf946f"/>
               <rect x="211" y="176" width="58" height="48" rx="12" fill="#d79b76"/>
@@ -326,13 +397,13 @@ main{max-width:1200px;margin:0 auto;padding:28px 24px 60px}
               </g>
               <circle cx="195" cy="160" r="14" fill="#e48c76" opacity=".33"/>
               <circle cx="285" cy="160" r="14" fill="#e48c76" opacity=".33"/>
-              <g id="eyes">
+              <g class="eyes">
                 <ellipse cx="209" cy="130" rx="10" ry="7" fill="#fff"/>
                 <ellipse cx="271" cy="130" rx="10" ry="7" fill="#fff"/>
-                <g id="pupils" fill="#2a2522"><circle cx="210" cy="131" r="4.5"/><circle cx="272" cy="131" r="4.5"/></g>
+                <g class="pupils" fill="#2a2522"><circle cx="210" cy="131" r="4.5"/><circle cx="272" cy="131" r="4.5"/></g>
                 <path d="M198 127 Q209 120 221 127 M260 127 Q271 120 283 127" stroke="#b77d5b" stroke-width="2.5" fill="#e3ab86"/>
               </g>
-              <g id="brows" stroke="#efefe9" stroke-linecap="round" fill="none">
+              <g class="brows" stroke="#efefe9" stroke-linecap="round" fill="none">
                 <path d="M190 116 Q206 104 227 117" stroke-width="7.5"/>
                 <path d="M253 117 Q274 104 290 116" stroke-width="7.5"/>
                 <path d="M194 112 l-5 -5 M224 113 l4 -5 M256 113 l-4 -5 M286 112 l5 -5" stroke-width="3"/>
@@ -344,26 +415,23 @@ main{max-width:1200px;margin:0 auto;padding:28px 24px 60px}
               <path d="M236 132 Q230 157 225 164 Q231 175 244 172 Q257 175 256 164 Q250 156 245 132 Z" fill="#dc9a75"/>
               <circle cx="235" cy="168" r="2.4" fill="#9c5f45"/><circle cx="247" cy="168" r="2.4" fill="#9c5f45"/>
               <path d="M170 160 Q200 182 233 172 M310 160 Q280 182 247 172" stroke="#d6eef3" stroke-width="2.5" fill="none" opacity=".85"/>
-              <ellipse id="mouth-open" cx="240" cy="194" rx="12" ry="0" fill="#4a1d18"/>
-              <path id="mouth-line" d="M224 196 Q240 189 256 196" stroke="#6b3b2e" stroke-width="3" fill="none" stroke-linecap="round"/>
+              <ellipse class="mouth-open" cx="240" cy="194" rx="12" ry="0" fill="#4a1d18"/>
+              <path class="mouth-line" d="M224 196 Q240 189 256 196" stroke="#6b3b2e" stroke-width="3" fill="none" stroke-linecap="round"/>
               <path d="M212 183 Q226 173 240 180 Q254 173 268 183 Q263 193 251 189 Q240 186 229 189 Q217 193 212 183 Z" fill="#e6e6e0"/>
             </g>
           </svg>
           <div class="video-top">
             <div><div class="who">Walter B., 72</div><div class="sub">Bay 4 · brought in by wife</div></div>
             <div class="live-dot"><i></i><span id="timer">00:00</span></div>
-            <button type="button" class="voice-btn" id="voice-btn" title="Let Walter talk out loud">🔇</button>
           </div>
-          <div class="pip"><svg viewBox="0 0 60 60"><circle cx="30" cy="24" r="11" fill="#6e6a63"/><path d="M8 60 Q10 38 30 38 Q50 38 52 60Z" fill="#6e6a63"/></svg><span>You</span></div>
-        </div>
-        <div class="speaking">
-          <div class="bubble-big" id="walter-bubble">"Another one. Go ahead, kid. Ask."</div>
+          <div class="pip"><video autoplay muted playsinline></video><svg viewBox="0 0 80 60"><circle cx="40" cy="25" r="11" fill="#6e6a63"/><path d="M16 60 Q18 38 40 38 Q62 38 64 60Z" fill="#6e6a63"/></svg><span>You</span></div>
         </div>
         <div class="history" id="ed-history"></div>
-        <form class="ask" id="ed-form" autocomplete="off">
-          <input id="ed-input" placeholder="Ask him anything…" aria-label="Ask Walter">
-          <button type="button" class="icon-btn mic" title="Speak" aria-label="Speak">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+        <form class="ask voice" id="ed-form" autocomplete="off">
+          <input id="ed-input" placeholder="Type your question…" aria-label="Ask Walter">
+          <button type="button" class="talk" id="talk-btn" aria-label="Ask Walter out loud">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+            <span>Hold to talk</span>
           </button>
           <button class="icon-btn send" aria-label="Send">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
@@ -423,29 +491,101 @@ main{max-width:1200px;margin:0 auto;padding:28px 24px 60px}
     <div class="screen-head">
       <div>
         <h1>Discharge teaching</h1>
-        <p id="dc-intro">Explain the plan in plain words. The caregiver repeats it back so you can see what landed.</p>
       </div>
       <button class="btn" id="to-feedback">See where the facts went →</button>
     </div>
-    <div class="split-head">
-      <div><div class="avatar" style="width:30px;height:30px;font-size:12px;background:#24211d;color:#fff">You</div>You <span class="tag">English</span></div>
-      <div id="cg-head"><div class="avatar av-ayse" style="width:30px;height:30px;font-size:12px">?</div>Caregiver</div>
-    </div>
-    <div class="turns" id="turns"><div class="turn-empty">Start with the most important thing they need to do at home.</div></div>
-    <form class="compose" id="dc-form" autocomplete="off">
-      <div class="jargon" id="jargon">⚠️ <span></span></div>
-      <label class="interp-toggle"><input type="checkbox" id="use-interp"> Use the Turkish interpreter</label>
-      <div class="row">
-        <input id="dc-input" placeholder='e.g. "Weigh him every morning before breakfast."' aria-label="Explain to the caregiver">
-        <button type="button" class="icon-btn mic" title="Speak" aria-label="Speak">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
-        </button>
-        <button class="icon-btn send" aria-label="Send">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-        </button>
+    <div class="ed">
+      <div class="call call-cg">
+        <div class="video">
+          <svg id="ayse-face" class="face" viewBox="0 0 480 300" aria-label="Ayşe on video, with Walter resting in bed behind her">
+            <defs>
+              <linearGradient id="wall2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#474c55"/><stop offset="1" stop-color="#2a2d33"/></linearGradient>
+              <radialGradient id="lamp2" cx=".35" cy=".3" r=".7"><stop offset="0" stop-color="#ffe2b8" stop-opacity=".22"/><stop offset="1" stop-color="#ffe2b8" stop-opacity="0"/></radialGradient>
+              <radialGradient id="skin2" cx=".45" cy=".35" r=".75"><stop offset="0" stop-color="#f4cba8"/><stop offset="1" stop-color="#d9a17c"/></radialGradient>
+              <filter id="soft" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="2.4"/></filter>
+              <pattern id="knit" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="#7a2c3a"/><path d="M0 5 L5 0 L10 5" stroke="#6a2532" stroke-width="1.4" fill="none"/></pattern>
+            </defs>
+            <rect width="480" height="300" fill="url(#wall2)"/>
+            <rect width="480" height="300" fill="url(#lamp2)"/>
+            <!-- behind her, soft focus: Walter resting in his hospital bed -->
+            <g filter="url(#soft)" opacity=".92">
+              <rect x="296" y="40" width="74" height="48" rx="6" fill="#101214"/>
+              <polyline points="302,66 314,66 318,60 322,66 330,66 334,50 338,74 342,66 362,66" fill="none" stroke="#44d38a" stroke-width="2"/>
+              <line x1="464" y1="36" x2="464" y2="272" stroke="#9aa1a8" stroke-width="3"/>
+              <rect x="452" y="42" width="24" height="34" rx="6" fill="#d8eef5" opacity=".8"/>
+              <rect x="266" y="198" width="214" height="82" rx="10" fill="#c3c9cf"/>
+              <rect x="442" y="148" width="14" height="116" rx="5" fill="#a7aeb5"/>
+              <ellipse cx="408" cy="184" rx="38" ry="15" fill="#f1f1ee"/>
+              <circle cx="402" cy="169" r="21" fill="#e2ab87"/>
+              <circle cx="384" cy="163" r="8" fill="#dcdcd6"/><circle cx="419" cy="159" r="8" fill="#dcdcd6"/>
+              <path d="M390 168 h10 M405 168 h10" stroke="#3a2e28" stroke-width="2.5"/>
+              <path d="M394 177 Q402 172 410 177" stroke="#e6e6e0" stroke-width="4" fill="none"/>
+              <path d="M383 173 Q402 186 423 173" stroke="#d6eef3" stroke-width="1.6" fill="none"/>
+              <path d="M264 212 Q328 180 390 188 Q420 192 438 206 L438 264 L264 264 Z" fill="#8fb0c8"/>
+              <path d="M264 212 Q328 180 390 188" stroke="#a9c5d9" stroke-width="5" fill="none"/>
+            </g>
+            <!-- Ayşe -->
+            <g class="head-g">
+              <path d="M58 300 C70 244 126 222 200 219 C274 222 330 244 342 300 Z" fill="url(#knit)"/>
+              <path d="M176 222 L200 266 L224 222 Z" fill="#f2e9d6"/>
+              <path d="M176 222 L200 266 M224 222 L200 266" stroke="#5e1f2b" stroke-width="3"/>
+              <rect x="179" y="190" width="42" height="40" rx="12" fill="#d79f7a"/>
+              <path d="M183 227 Q200 241 217 227" stroke="#f1e9d8" stroke-width="3.2" fill="none" stroke-dasharray="0.1 6" stroke-linecap="round"/>
+              <ellipse cx="200" cy="120" rx="72" ry="74" fill="#b8b2aa"/>
+              <circle cx="200" cy="50" r="23" fill="#b8b2aa"/>
+              <path d="M184 44 Q200 34 216 44 M182 54 Q200 46 218 54" stroke="#9f988f" stroke-width="2" fill="none"/>
+              <ellipse cx="135" cy="138" rx="10" ry="15" fill="#d9a37e"/><ellipse cx="265" cy="138" rx="10" ry="15" fill="#d9a37e"/>
+              <circle cx="135" cy="156" r="3.5" fill="#d4af37"/><circle cx="265" cy="156" r="3.5" fill="#d4af37"/>
+              <ellipse cx="200" cy="132" rx="64" ry="76" fill="url(#skin2)"/>
+              <path d="M136 124 C132 80 164 62 200 62 C236 62 268 80 264 124 C254 100 236 88 200 90 C164 88 146 100 136 124 Z" fill="#cac4bc"/>
+              <path d="M158 84 Q180 76 198 80 M204 80 Q224 76 244 86" stroke="#aaa39b" stroke-width="2" fill="none"/>
+              <circle cx="166" cy="160" r="12" fill="#e58f86" opacity=".3"/><circle cx="234" cy="160" r="12" fill="#e58f86" opacity=".3"/>
+              <g stroke="#c48a66" stroke-width="1.6" fill="none" stroke-linecap="round">
+                <path d="M181 166 Q175 176 181 187"/><path d="M219 166 Q225 176 219 187"/>
+                <path d="M157 131 l-6 -3 M157 137 l-7 0 M243 131 l6 -3 M243 137 l7 0"/>
+              </g>
+              <g class="eyes">
+                <ellipse cx="178" cy="134" rx="9" ry="6.5" fill="#fff"/><ellipse cx="222" cy="134" rx="9" ry="6.5" fill="#fff"/>
+                <g class="pupils" fill="#3b2a20"><circle cx="179" cy="135" r="4.2"/><circle cx="223" cy="135" r="4.2"/></g>
+                <path d="M168 131 Q178 125 188 131 M212 131 Q222 125 232 131" stroke="#6d4a3a" stroke-width="2" fill="none"/>
+              </g>
+              <g class="brows" stroke="#8b8077" stroke-width="3.5" stroke-linecap="round" fill="none"><path d="M164 119 Q178 112 191 118"/><path d="M209 118 Q222 112 236 119"/></g>
+              <g fill="rgba(255,255,255,.06)" stroke="#b8913f" stroke-width="2.2"><circle cx="178" cy="134" r="15"/><circle cx="222" cy="134" r="15"/></g>
+              <path d="M193 133 Q200 129 207 133 M163 131 L146 128 M237 131 L254 128" stroke="#b8913f" stroke-width="2.2" fill="none"/>
+              <path d="M146 129 Q138 182 168 226 M254 129 Q262 182 232 226" stroke="#c9a54e" stroke-width="1.1" fill="none" stroke-dasharray="2 3"/>
+              <path d="M197 138 Q193 155 190 160 Q195 167 202 165 Q209 167 211 160 Q206 154 203 138 Z" fill="#d99f7b"/>
+              <ellipse class="mouth-open" cx="200" cy="184" rx="10" ry="0" fill="#6b2430"/>
+              <path class="mouth-line" d="M187 182 Q200 191 213 182" stroke="#b5525c" stroke-width="3" fill="none" stroke-linecap="round"/>
+            </g>
+          </svg>
+          <div class="video-top">
+            <div><div class="who" id="cg-name">Caregiver</div><div class="sub" id="cg-sub"></div></div>
+            <div class="live-dot"><i></i><span id="dc-timer">00:00</span></div>
+          </div>
+          <div class="pip"><video autoplay muted playsinline></video><svg viewBox="0 0 80 60"><circle cx="40" cy="25" r="11" fill="#6e6a63"/><path d="M16 60 Q18 38 40 38 Q62 38 64 60Z" fill="#6e6a63"/></svg><span>You</span></div>
+        </div>
+        <div class="history dc-log" id="turns"></div>
+        <form class="ask voice" id="dc-form" autocomplete="off">
+          <div class="jargon" id="jargon">⚠️ <span></span></div>
+          <input id="dc-input" placeholder="Type what you'd tell her…" aria-label="Explain to the caregiver">
+          <button type="button" class="talk" id="dc-talk" aria-label="Hold to talk to the caregiver">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+            <span>Hold to talk</span>
+          </button>
+          <button class="icon-btn send" aria-label="Send">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </form>
+        <label class="interp-toggle"><input type="checkbox" id="use-interp"> <span id="interp-label">Use an interpreter</span></label>
       </div>
-    </form>
-    <div class="card checklist" id="checklist"></div>
+
+      <div class="card chart dc-side">
+        <h2>Discharge plan</h2>
+        <div class="meta" id="dc-meta">Going home today</div>
+        <div id="checklist"></div>
+        <div class="hint" id="dc-intro"></div>
+      </div>
+    </div>
   </section>
 
   <!-- ================= 4. FEEDBACK ================= -->
@@ -455,7 +595,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 24px 60px}
         <h1>Where every fact went</h1>
         <p>Each fact is a line. It runs as far as it made it, and it stops where it was lost.</p>
       </div>
-      <button class="btn ghost" id="restart">↺ New case</button>
+      <button class="btn ghost" id="restart">← Back to assignments</button>
     </div>
     <p class="summary" id="fb-summary"></p>
     <div class="card mapcard">
@@ -586,6 +726,7 @@ function normFeedback(r) {
    Navigation
 ============================================================================= */
 function go(stage) {
+  document.body.classList.toggle('in-portal', stage === 'portal');
   state.stage = stage;
   state.reached = Math.max(state.reached, STAGES.indexOf(stage));
   $$('.screen').forEach(s => s.classList.toggle('on', s.id === 's-' + stage));
@@ -597,6 +738,7 @@ function go(stage) {
   });
   if (stage === 'handoff') renderRef();
   if (stage === 'feedback') loadFeedback();
+  if (stage === 'discharge' && !state.dcStart) state.dcStart = Date.now();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 $$('.step').forEach(b => b.onclick = () => go(b.dataset.s));
@@ -614,15 +756,37 @@ async function teachback(show) {
     const r = await api('POST', `/session/${state.id}/teachback`);
     state.taught = true;
     Object.assign(turn, { pending: false, reply: r.tr || r.reply_tr || '', en: r.en || r.reply_en || '' });
-    if (show) { renderTurns(); Voice.speak(turn.reply, 'ayse'); btn.textContent = 'See where the facts went →'; }
+    if (show) { renderTurns(); AyseFace.say(turn.reply); btn.textContent = 'See where the facts went →'; }
   } catch (err) { turn.pending = false; turn.reply = '…'; if (show) renderTurns(); toast(err.message, true); }
   btn.disabled = false;
 }
-$('#restart').onclick = () => { location.reload(); };
+/* Back to the assignments list. Resets everything in place (no page reload, no pop-up). */
+function toPortal() {
+  if (typeof Voice !== 'undefined') Voice.stop(); else if (window.speechSynthesis) speechSynthesis.cancel();
+  Object.assign(state, { id: null, reached: 0, facts: [], hidden: 0, edLog: [], handoffDone: false, turns: [], checklist: [], taught: false, dcStart: null });
+  // ED
+  renderEdHistory(); renderChart();
+  Face.mood(null); AyseFace.mood(null); Camera.stop();
+  // Handoff
+  sbarTA.forEach(t => { t.value = ''; autosize(t); });
+  $('#sbar-count').textContent = '0 words';
+  $('#okafor-out').innerHTML = '<div class="say wait">Waiting for your handoff…</div>';
+  // Discharge
+  dcInterim = ''; renderTurns(); $('#dc-timer').textContent = '00:00';
+  dcInput.value = ''; jBox.classList.remove('show');
+  renderChecklist();
+  $('#to-feedback').textContent = 'See where the facts went →'; $('#to-feedback').disabled = false;
+  // Feedback
+  $('#fb-summary').textContent = ''; $('#subway').innerHTML = ''; $('#threads').innerHTML = '';
+  go('portal');
+  loadCases();
+}
+$('#restart').onclick = toPortal;
+$('#back-link').onclick = toPortal;
 
 function toast(msg, err) {
   const t = $('#toast'); t.textContent = msg; t.className = 'toast show' + (err ? ' err' : '');
-  clearTimeout(t._h); t._h = setTimeout(() => t.className = 'toast', 3200);
+  clearTimeout(t._h); t._h = setTimeout(() => t.className = 'toast', Math.max(3200, msg.length * 70));
 }
 
 /* =============================================================================
@@ -637,7 +801,7 @@ function renderChart(newIds = []) {
     + (!found.length && !state.hidden ? '<span class="empty">Nothing charted yet.</span>' : '');
   newIds.forEach((id, i) => {
     const el = box.querySelector(`[data-id="${CSS.escape(String(id))}"]`);
-    if (el) setTimeout(() => flyChip($('#walter-bubble'), el), i * 220);
+    if (el) setTimeout(() => flyChip($('#ed-history .h.walter:last-of-type') || $('.video'), el), i * 220);
   });
 }
 
@@ -660,10 +824,14 @@ function flyChip(fromEl, toEl) {
   };
 }
 
-function renderEdHistory() {
+let edInterim = '';
+function renderEdHistory(waiting) {
   const h = $('#ed-history');
-  h.innerHTML = state.edLog.slice(0, -1).map(m =>
-    `<div class="h ${m.who}"><b>${m.who === 'walter' ? 'Walter' : 'You'}:</b> ${esc(m.text)}</div>`).join('');
+  const lastW = state.edLog.map(m => m.who).lastIndexOf('walter');
+  h.innerHTML = state.edLog.map((m, i) =>
+    `<div class="h ${m.who}${i === lastW && i === state.edLog.length - 1 ? ' latest' : ''}"><b>${m.who === 'walter' ? 'Walter' : 'You'}:</b> ${esc(m.text)}</div>`).join('')
+    + (edInterim ? `<div class="h me interim"><b>You:</b> ${esc(edInterim)}…</div>` : '')
+    + (waiting ? '<div class="h wait">Walter is thinking…</div>' : '');
   h.scrollTop = h.scrollHeight;
 }
 
@@ -681,22 +849,18 @@ $('#ed-form').onsubmit = async e => {
   if (!text || !state.id) return;
   input.value = '';
   state.edLog.push({ who: 'me', text });
-  const bubble = $('#walter-bubble');
-  bubble.className = 'bubble-big typing';
-  bubble.innerHTML = `<span style="font-size:15px;display:block;margin-bottom:8px;color:#b8b0a2">You: ${esc(text)}</span><span class="dots"><span></span><span></span><span></span></span>`;
+  renderEdHistory(true);
   Face.mood('thinking');
   try {
     const r = normChat(await api('POST', `/session/${state.id}/chat`, { text, stage: 'ed' }));
-    state.edLog.push({ who: 'walter', text: r.text });
-    bubble.className = 'bubble-big';
-    bubble.textContent = `"${r.text.replace(/^"|"$/g, '')}"`;
+    state.edLog.push({ who: 'walter', text: r.text.replace(/^"|"$/g, '') });
     renderEdHistory();
     Face.mood(null); Face.say(r.text);
     const fresh = await refreshSession();
     if (fresh.length) Face.mood('caught', 1800);
     renderChart([...new Set([...fresh, ...r.unlocked.filter(id => fresh.includes(id))])]);
   } catch (err) {
-    Face.mood(null); bubble.className = 'bubble-big'; bubble.textContent = '…(connection dropped)';
+    Face.mood(null); renderEdHistory();
     toast(err.message, true);
   }
 };
@@ -773,16 +937,21 @@ state.caregiver = normCaregiver(null);
 function renderCaregiver() {
   const c = state.caregiver;
   $('#dc-intro').textContent = c.needsInterpreter
-    ? 'Explain the discharge plan in plain English, and the caregiver repeats it back. If you use a medical term, it gets translated into their preferred language.'
-    : 'Explain the discharge plan in plain English, and the caregiver repeats it back. Medical terms get flagged.';
-  $('#cg-head').innerHTML = `<div class="avatar av-ayse" style="width:30px;height:30px;font-size:12px">${esc(c.initials)}</div>${esc(c.name)}
-    <span class="tag">${c.relation ? esc(c.relation) + ' · ' : ''}English${c.needsInterpreter ? ` · prefers ${esc(c.languageName)} for medical terms` : ''}</span>`;
+    ? `Hold the button and explain the plan in plain English. ${c.name} repeats it back. Medical terms get flagged, and you can bring in a ${c.languageEn} interpreter.`
+    : `Hold the button and explain the plan in plain English. ${c.name} repeats it back. Medical terms get flagged.`;
+  $('#interp-label').textContent = `Use the ${c.languageEn} interpreter`;
+  $('.interp-toggle').style.display = c.needsInterpreter ? '' : 'none';
+  if (!c.needsInterpreter) $('#use-interp').checked = false;
+  $('#cg-name').textContent = c.name;
+  $('#cg-sub').textContent = (c.relation ? c.relation[0].toUpperCase() + c.relation.slice(1) + ' · ' : '') + 'English' + (c.needsInterpreter ? ` · prefers ${c.languageName} for medical terms` : '');
+  $('#dc-meta').textContent = `Going home today${c.relation ? ` with his ${c.relation}` : ''}`;
   renderChecklist();
 }
 
 const dcInput = $('#dc-input'), jBox = $('#jargon');
-dcInput.addEventListener('input', () => {
-  const j = findJargon(dcInput.value);
+dcInput.addEventListener('input', () => showJargon(dcInput.value));
+function showJargon(text) {
+  const j = findJargon(text || '');
   if (j.length) {
     const c = state.caregiver;
     const terms = j.map(x => `<b>"${esc(x.term)}"</b>`).join(', ');
@@ -792,24 +961,20 @@ dcInput.addEventListener('input', () => {
       : `Medical term: ${terms}. ${esc(c.name)} may not know it. Try ${swaps}.`;
     jBox.classList.add('show');
   } else jBox.classList.remove('show');
-});
+}
 
+let dcInterim = '';
 function renderTurns() {
-  const box = $('#turns');
-  if (!state.turns.length) return;
-  box.innerHTML = state.turns.map(t => `
-    <div class="turn">
-      <div class="you"><span class="lbl">You said</span>"${esc(t.text)}"</div>
-      <div class="tr ${t.pending ? 'pending' : ''}">
-        ${t.interp ? `<div class="interp"><span class="lbl">Interpreter → ${esc(state.caregiver.languageName)}</span>${esc(t.interp)}</div>` : ''}
-        ${t.check && t.check.status === 'flagged' ? `<div class="flag"><b>Translation flagged.</b> ${esc(t.check.issues.join('; '))}${t.check.back_translation ? `<br><span class="lbl">She actually heard</span>"${esc(t.check.back_translation)}"` : ''}</div>` : ''}
-        ${t.check && t.check.status === 'unchecked' ? `<div class="flag soft">Translation not verified (checker offline).</div>` : ''}
-        ${t.tooLong ? `<div class="flag soft">Too long for her. Try shorter sentences.</div>` : ''}
-        <span class="lbl">${esc(state.caregiver.name)}</span>
-        <div class="ayse">${t.pending ? '<span class="dots">…</span>' : `"${esc(t.reply)}"`}</div>
-        ${t.en ? `<div class="gloss">${esc(t.en)}</div>` : ''}
-      </div>
-    </div>`).join('');
+  const box = $('#turns'), c = state.caregiver, last = state.turns.length - 1;
+  box.innerHTML = state.turns.map((t, i) => `
+    <div class="h me"><b>You:</b> ${esc(t.text)}</div>
+    ${t.interp ? `<div class="h interp-line"><b>Interpreter → ${esc(c.languageName)}:</b> ${esc(t.interp)}</div>` : ''}
+    ${t.check && t.check.status === 'flagged' ? `<div class="flag"><b>Translation flagged.</b> ${esc(t.check.issues.join('; '))}${t.check.back_translation ? `<br>She actually heard: "${esc(t.check.back_translation)}"` : ''}</div>` : ''}
+    ${t.check && t.check.status === 'unchecked' ? `<div class="flag soft">Translation not verified (checker offline).</div>` : ''}
+    ${t.tooLong ? `<div class="flag soft">Too long for her. Try shorter sentences.</div>` : ''}
+    ${t.pending ? `<div class="h wait">${esc(c.name)} is thinking…</div>`
+      : `<div class="h cg${i === last ? ' latest' : ''}"><b>${esc(c.name)}:</b> ${esc(t.reply)}${t.en ? `<div class="gloss">${esc(t.en)}</div>` : ''}</div>`}`).join('')
+    + (dcInterim ? `<div class="h me interim"><b>You:</b> ${esc(dcInterim)}…</div>` : '');
   box.scrollTop = box.scrollHeight;
 }
 
@@ -829,18 +994,20 @@ $('#dc-form').onsubmit = async e => {
   dcInput.value = ''; jBox.classList.remove('show');
   const turn = { text, pending: true, interp: '', reply: '', en: '' };
   state.turns.push(turn); renderTurns();
+  AyseFace.mood('thinking');
   try {
     const r = normChat(await api('POST', `/session/${state.id}/chat`, { text, stage: 'discharge', interpreter: $('#use-interp').checked }));
+    AyseFace.mood(null);
     Object.assign(turn, { pending: false, interp: r.interp, reply: r.text, en: r.en, check: r.check, tooLong: r.tooLong });
     renderTurns();
-    Voice.speak(r.text, 'ayse');
+    AyseFace.say(r.text);
     if (r.checklist) {
       const prev = Object.fromEntries(state.checklist.map(c => [c.id, c.status]));
       state.checklist = r.checklist;
       renderChecklist(r.checklist.filter(c => prev[c.id] !== c.status).map(c => c.id));
     }
     if (r.jargon.length) toast(`Jargon caught: "${r.jargon.map(j => j.term).join('", "')}"`);
-  } catch (err) { turn.pending = false; turn.reply = '…'; renderTurns(); toast(err.message, true); }
+  } catch (err) { AyseFace.mood(null); turn.pending = false; turn.reply = '…'; renderTurns(); toast(err.message, true); }
 };
 
 /* =============================================================================
@@ -957,11 +1124,11 @@ const Voice = (() => {
 })();
 
 /* =============================================================================
-   Walter's face: blink, talk, think, "caught"
+   Faces (Walter, Ayşe): blink, talk, think, "caught"
 ============================================================================= */
-const Face = (() => {
-  const svg = $('#walter-face'), eyes = $('#eyes'), mouth = $('#mouth-open'), line = $('#mouth-line');
-  let talking = null, voice = false, moodT;
+function makeFace(svg, who) {
+  const eyes = svg.querySelector('.eyes'), mouth = svg.querySelector('.mouth-open'), line = svg.querySelector('.mouth-line');
+  let talking = null, moodT;
   (function blink() {
     eyes.classList.add('blink');
     setTimeout(() => eyes.classList.remove('blink'), 120);
@@ -973,18 +1140,12 @@ const Face = (() => {
     line.style.opacity = 0;
     talking = setInterval(() => mouth.setAttribute('ry', [2, 5, 8, 4, 9, 3][Math.random() * 6 | 0]), 110);
   }
-  function pickVoice() {
-    const vs = speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang));
-    return vs.find(v => /daniel|fred|alex|male|guy|george|david/i.test(v.name)) || vs[0];
-  }
+  function fakeTalk(text) { flap(true); setTimeout(() => flap(false), Math.min(6500, 900 + text.length * 45)); }
   function say(text) {
-    if (Voice.on) {
-      Voice.speak(text, 'walter', { onstart: () => flap(true), onend: () => flap(false) })
-        .then(ok => { if (!ok) { flap(true); setTimeout(() => flap(false), Math.min(6500, 900 + text.length * 45)); } });
-      return;
-    }
-    flap(true);
-    setTimeout(() => flap(false), Math.min(6500, 900 + text.length * 45));
+    if (!text) return;
+    if (!Voice.on) return fakeTalk(text);
+    Voice.speak(text, who, { onstart: () => flap(true), onend: () => flap(false) })
+      .then(ok => { if (!ok) fakeTalk(text); });
   }
   function mood(m, ms) {
     clearTimeout(moodT);
@@ -992,28 +1153,101 @@ const Face = (() => {
     if (m) svg.classList.add(m);
     if (ms) moodT = setTimeout(() => svg.classList.remove(m), ms);
   }
-  const vb = $('#voice-btn');
-  const paint = () => { vb.classList.toggle('on', Voice.on); vb.textContent = Voice.on ? '🔊' : '🔇'; vb.title = Voice.on ? 'Mute voices' : 'Turn voices on'; };
-  paint();
-  vb.onclick = () => { Voice.on = !Voice.on; paint(); if (!Voice.on) flap(false); };
-  return { say, mood };
+  return { say, mood, flap };
+}
+const Face = makeFace($('#walter-face'), 'walter');
+const AyseFace = makeFace($('#ayse-face'), 'ayse');
+
+/* =============================================================================
+   Your camera in the "You" tile (ED + discharge). Video only, never recorded or sent.
+============================================================================= */
+const Camera = (() => {
+  let stream = null, warned = false;
+  async function start() {
+    if (!stream && navigator.mediaDevices?.getUserMedia) {
+      try { stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' }, audio: false }); }
+      catch { if (!warned) { warned = true; toast('Camera is off. Allow camera access in the address bar to see yourself in the call.'); } }
+    }
+    $$('.pip').forEach(p => {
+      const v = p.querySelector('video');
+      if (stream) { v.srcObject = stream; v.play?.().catch(() => {}); p.classList.add('live'); }
+    });
+  }
+  function stop() {
+    stream?.getTracks().forEach(t => t.stop()); stream = null;
+    $$('.pip').forEach(p => { p.classList.remove('live'); p.querySelector('video').srcObject = null; });
+  }
+  return { start, stop };
 })();
 
 /* =============================================================================
    Voice input (Chrome / Edge). Hidden if unsupported.
 ============================================================================= */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-$$('.mic').forEach(btn => {
-  if (!SR) { btn.style.display = 'none'; return; }
-  btn.onclick = () => {
-    const form = btn.closest('form'), input = form.querySelector('input');
-    const rec = new SR(); rec.lang = 'en-US'; rec.interimResults = true;
-    btn.classList.add('rec');
-    rec.onresult = ev => { input.value = [...ev.results].map(r => r[0].transcript).join(''); input.dispatchEvent(new Event('input')); };
-    rec.onend = () => { btn.classList.remove('rec'); if (input.value.trim()) form.requestSubmit(); };
-    rec.onerror = () => btn.classList.remove('rec');
-    rec.start();
+
+/* Hold the button (or the Space bar) to talk, release to send.
+   If the mic can't be used, the text box appears so the demo never gets stuck. */
+function pushToTalk({ btn, form, input, onInterim }) {
+  const label = btn.querySelector('span'), idle = label.textContent;
+  const useTyping = (why, keepMic) => {
+    form.classList.remove('voice');
+    form.classList.toggle('mic-too', !!keepMic);
+    if (why) toast(why, true);
+    input.focus();
   };
+  if (!SR) { useTyping(); return { start() {}, stop() {} }; }
+  let rec = null, heard = '';
+  function start(e) {
+    e?.preventDefault?.();
+    if (rec) return;
+    if (e?.pointerId != null) btn.setPointerCapture?.(e.pointerId);
+    if (window.speechSynthesis) speechSynthesis.cancel();
+    heard = '';
+    rec = new SR(); rec.lang = 'en-US'; rec.interimResults = true; rec.continuous = true;
+    btn.classList.add('rec'); label.textContent = 'Listening… release to send';
+    rec.onresult = ev => { heard = [...ev.results].map(r => r[0].transcript).join(''); onInterim(heard); };
+    rec.onerror = ev => {
+      const msg = {
+        'not-allowed': location.protocol === 'file:'
+          ? 'The mic is blocked when the file is opened directly. Run python3 -m http.server 5500 in the frontend folder and open http://localhost:5500. You can type for now.'
+          : 'Microphone permission is blocked. Allow it from the icon in the address bar and in Mac System Settings → Privacy & Security → Microphone.',
+        'service-not-allowed': 'This browser blocks speech recognition. Use Chrome. You can type for now.',
+        'audio-capture': 'No microphone found. Check that one is connected. You can type for now.',
+        'network': 'Speech recognition needs an internet connection. You can type for now.',
+      }[ev.error];
+      if (msg) useTyping(msg, true);
+      else if (ev.error === 'no-speech') toast("Didn't catch that. Hold the button while you speak.");
+    };
+    rec.onend = () => {
+      rec = null; onInterim('');
+      btn.classList.remove('rec'); label.textContent = idle;
+      if (heard.trim()) { input.value = heard.trim(); form.requestSubmit(); }
+    };
+    try { rec.start(); } catch { rec = null; btn.classList.remove('rec'); label.textContent = idle; }
+  }
+  function stop() { if (rec) rec.stop(); }
+  btn.addEventListener('pointerdown', start);
+  ['pointerup', 'pointercancel'].forEach(ev => btn.addEventListener(ev, stop));
+  btn.addEventListener('contextmenu', e => e.preventDefault());
+  return { start, stop };
+}
+
+const edTalk = pushToTalk({ btn: $('#talk-btn'), form: $('#ed-form'), input: $('#ed-input'),
+  onInterim: t => { edInterim = t; renderEdHistory(); } });
+const dcTalk = pushToTalk({ btn: $('#dc-talk'), form: $('#dc-form'), input: $('#dc-input'),
+  onInterim: t => { dcInterim = t; renderTurns(); showJargon(t); } });
+
+/* Space bar = push-to-talk on the ED and discharge screens */
+let spaceHeld = false;
+const talkFor = () => state.stage === 'ed' ? edTalk : state.stage === 'discharge' ? dcTalk : null;
+document.addEventListener('keydown', e => {
+  if (e.code !== 'Space' || e.repeat || spaceHeld || /INPUT|TEXTAREA/.test(document.activeElement?.tagName)) return;
+  const t = talkFor(); if (!t) return;
+  e.preventDefault(); spaceHeld = true; t.start();
+});
+document.addEventListener('keyup', e => {
+  if (e.code !== 'Space' || !spaceHeld) return;
+  spaceHeld = false; e.preventDefault(); talkFor()?.stop();
 });
 
 /* =============================================================================
@@ -1022,16 +1256,74 @@ $$('.mic').forEach(btn => {
 let t0 = Date.now();
 setInterval(() => {
   const s = Math.floor((Date.now() - t0) / 1000);
-  $('#timer').textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+  const fmt = s => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+  $('#timer').textContent = fmt(s);
+  if (state.dcStart) $('#dc-timer').textContent = fmt(Math.floor((Date.now() - state.dcStart) / 1000));
 }, 1000);
 
 (async function boot() {
   const m = $('#mode');
   if (!MOCK) { m.textContent = 'Live API'; m.classList.add('live'); m.title = API; }
-  else m.title = 'Add ?api=http://localhost:8000 to the URL to use the real backend';
-  go('ed');
+  else m.title = 'Running on built-in mock data. Remove ?mock from the URL to use the backend';
+  go('portal');
+  loadCases();
+})();
+
+/* =============================================================================
+   0. ASSIGNMENTS PORTAL
+   Cases come from GET /cases. If the backend doesn't have that route yet,
+   the built-in list below is used (only Walter is playable in the demo).
+============================================================================= */
+const DEMO_CASES = [
+  { id: 'walter', name: 'Walter B.', age: 72, sex: 'M', location: 'ED · Bay 4', chief_complaint: 'Short of breath for 5 days',
+    route: ['ED', 'Cardiology', 'Home'], tags: ['Heart failure'], caregiver_language: 'tr', minutes: 15, due: 'Due today', playable: true },
+  { id: 'rosa', name: 'Rosa M.', age: 58, sex: 'F', location: 'ED · Bay 2', chief_complaint: 'Chest pain after shoveling snow',
+    route: ['ED', 'Cath lab', 'Home'], tags: ['Chest pain'], caregiver_language: 'es', minutes: 15, due: 'Due today' },
+  { id: 'chen', name: 'Wei C.', age: 81, sex: 'M', location: 'ED · Hall 1', chief_complaint: 'Confused, fell at home last night',
+    route: ['ED', 'Geriatrics', 'Rehab'], tags: ['Delirium', 'Falls'], caregiver_language: 'zh', minutes: 20, due: 'Due Mon' },
+  { id: 'priya', name: 'Priya S.', age: 34, sex: 'F', location: 'ED · Bay 7', chief_complaint: "Asthma attack, 28 weeks pregnant",
+    route: ['ED', 'Obstetrics', 'Home'], tags: ['Asthma', 'Pregnancy'], caregiver_language: 'en', minutes: 15, due: 'Due Wed' },
+];
+const CASE_COLORS = ['#c7791a', '#c2410c', '#0f766e', '#7c3aed', '#2563c9'];
+
+let casesFromBackend = false;
+async function loadCases() {
+  let cases;
   try {
-    const r = await api('POST', '/session', {});
+    const r = await api('GET', '/cases');
+    cases = Array.isArray(r) ? r : (r.cases || []);
+    if (!cases.length) throw new Error('no cases');
+    casesFromBackend = true;
+  } catch { cases = DEMO_CASES; casesFromBackend = false; }
+  const langName = code => { try { const n = new Intl.DisplayNames([code], { type: 'language' }).of(code); return n.charAt(0).toLocaleUpperCase(code) + n.slice(1); } catch { return code; } };
+  $('#cases').innerHTML = cases.map((c, i) => {
+    const initials = (c.initials || c.name.split(/\s+/).map(w => w[0]).join('')).slice(0, 2).toUpperCase();
+    const tags = [...(c.tags || []),
+      ...(c.caregiver_language ? [`Caregiver: ${langName(c.caregiver_language)}`] : []),
+      ...(c.minutes ? [`~${c.minutes} min`] : [])];
+    return `<article class="card case ready">
+      <div class="case-top">
+        <div class="avatar" style="background:${CASE_COLORS[i % CASE_COLORS.length]};color:#fff">${esc(initials)}</div>
+        <div><h3>${esc(c.name)}</h3><div class="sub">${esc(c.age)} ${esc(c.sex || '')}${c.location ? ' · ' + esc(c.location) : ''}</div></div>
+        ${c.due ? `<span class="badge ready">${esc(c.due)}</span>` : ''}
+      </div>
+      <p class="cc">${esc(c.chief_complaint)}</p>
+      ${c.route ? `<div class="route">${c.route.map(esc).join(' <i>→</i> ')}</div>` : ''}
+      <div class="tags">${tags.map(t => `<span>${esc(t)}</span>`).join('')}</div>
+      <button class="btn" data-case="${esc(c.id)}">Start case →</button>
+    </article>`;
+  }).join('');
+  $$('#cases [data-case]').forEach(b => b.onclick = () => startCase(b.dataset.case, b));
+}
+
+async function startCase(caseId, btn) {
+  if (!casesFromBackend && !DEMO_CASES.find(c => c.id === caseId)?.playable) {
+    toast('This case is still loading on the server. Try Walter B. first.');
+    return;
+  }
+  btn.disabled = true; btn.textContent = 'Starting…';
+  try {
+    const r = await api('POST', '/session', { case_id: caseId });
     state.id = r.session_id ?? r.id ?? r.sessionId;
     state.caregiver = normCaregiver(r.caregiver || r.case?.caregiver || r.patient?.caregiver);
     renderCaregiver();
@@ -1039,9 +1331,14 @@ setInterval(() => {
     if (p) $('#chart-meta').textContent = `${p.name || 'Walter B.'} · ${p.age || 72} ${p.sex || 'M'} · CC: ${p.chief_complaint || 'shortness of breath'}`;
     await refreshSession(); renderChart(); renderChecklist();
     t0 = Date.now();
-    $('#ed-input').focus();
-  } catch (err) { toast('Could not start a case: ' + err.message, true); }
-})();
+    go('ed');
+    Camera.start();
+    if (!$('#ed-form').classList.contains('voice')) $('#ed-input').focus();
+  } catch (err) {
+    btn.disabled = false; btn.textContent = 'Start case →';
+    toast('Could not start a case: ' + err.message, true);
+  }
+}
 
 /* =============================================================================
    MOCK BACKEND: mirrors the contract above so the UI is demoable alone.
@@ -1106,6 +1403,7 @@ const Mock = (() => {
 
   function handle(method, path, body = {}) {
     const p = path.split('/').filter(Boolean); // ['session', id, ...]
+    if (method === 'GET' && p[0] === 'cases') return { cases: DEMO_CASES };
     if (method === 'POST' && p.length === 1) {
       const id = 'mock-' + (++n);
       S[id] = { found: new Set(FACTS.filter(f => f.start).map(f => f.id)), handed: new Set(), check: {}, handoffText: '' };
