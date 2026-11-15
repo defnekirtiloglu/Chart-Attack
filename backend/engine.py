@@ -189,15 +189,7 @@ def ed_chat(s: Session, text: str) -> dict:
 
 
 # ======================= Handoff to cardiology =======================
-def facts_in_text(s: Session, text: str, candidates: List[dict]) -> List[str]:
-    menu = "\n".join(f'- {f["id"]}: {f["label"]}' for f in candidates)
-    out = llm.ask_json(
-        "Here is a clinical handoff note and a list of facts. Which facts does the note clearly convey? "
-        "Paraphrase counts; vague hints do not.\n"
-        f"Facts:\n{menu}\n\nNote:\n\"\"\"{text}\"\"\"\n\nReturn JSON {{\"fact_ids\": [...]}}.")
-    ok = {f["id"] for f in candidates}
-    if isinstance(out, dict):
-        return [i for i in out.get("fact_ids", []) if i in ok]
+def _keyword_hits(text: str, candidates: List[dict]) -> List[str]:
     low = text.lower()
     hits = []
     for f in candidates:
@@ -205,6 +197,26 @@ def facts_in_text(s: Session, text: str, candidates: List[dict]) -> List[str]:
         if any(k in low for k in kws):
             hits.append(f["id"])
     return hits
+
+
+def facts_in_text(s: Session, text: str, candidates: List[dict]) -> dict:
+    """Gemini and Claude judge the handoff independently. Code decides:
+    both say yes -> handed off; they disagree -> unclear (not counted)."""
+    menu = "\n".join(f'- {f["id"]}: {f["label"]}' for f in candidates)
+    prompt = ("Here is a clinical handoff note and a list of facts. Which facts does the note clearly convey? "
+              "Paraphrase counts; vague hints do not.\n"
+              f"Facts:\n{menu}\n\nNote:\n\"\"\"{text}\"\"\"\n\nReturn JSON {{\"fact_ids\": [...]}}.")
+    ok = {f["id"] for f in candidates}
+    votes = {}
+    for name, out in (("gemini", llm.ask_json(prompt)), ("claude", llm.claude_json(prompt))):
+        if isinstance(out, dict):
+            votes[name] = {i for i in out.get("fact_ids", []) if i in ok}
+    if not votes:
+        votes["keywords"] = set(_keyword_hits(text, candidates))
+    sets = list(votes.values())
+    agreed = set.intersection(*sets)
+    unclear = set.union(*sets) - agreed
+    return {"handed": sorted(agreed), "unclear": sorted(unclear), "judges": sorted(votes)}
 
 
 def build_plan(case: dict, handed: List[str]) -> List[dict]:
@@ -223,17 +235,23 @@ def do_handoff(s: Session, text: str) -> dict:
     s.turn += 1
     s.log("student", text)
     known = [s.fact(fid) for fid in s.discovered]
-    handed = facts_in_text(s, text, known)
+    vote = facts_in_text(s, text, known)
+    handed = vote["handed"]
     critical = [f for f in s.case["facts"] if f["critical"]]
     missing = []
     for f in critical:
         if f["id"] in handed:
+            continue
+        if f["id"] in vote["unclear"]:
+            missing.append({"id": f["id"], "label": f["label"], "why": "unclear: the two AI checkers disagreed on whether you said it",
+                            "consequence": s.case["plan"]["missed_consequence"].get(f["id"])})
             continue
         found = f["id"] in s.discovered
         missing.append({"id": f["id"], "label": f["label"],
                         "why": "found in the ED but left out of the handoff" if found else "never found in the ED",
                         "consequence": s.case["plan"]["missed_consequence"].get(f["id"])})
     s.plan = build_plan(s.case, handed)
+    pharm = pharmacist_review(s, handed)
     c = s.case["cardiologist"]
     reply = llm.ask_text(
         f"You are {c['name']}. {c['persona']}\n"
@@ -244,10 +262,44 @@ def do_handoff(s: Session, text: str) -> dict:
     if not reply:
         reply = ("Thanks. Here's my plan: " + " ".join(p["point"] for p in s.plan)
                  + " One question: why do you think he keeps coming back?")
-    s.handoff = {"text": text, "handed_off": handed, "missing_critical": missing, "reply": reply}
+    s.handoff = {"text": text, "handed_off": handed, "unclear": vote["unclear"], "judges": vote["judges"],
+                 "missing_critical": missing, "reply": reply, "pharmacist": pharm}
     s.log("cardiologist", reply)
+    if pharm:
+        s.log("pharmacist", pharm["note"])
     s.stage = "discharge"
-    return {"speaker": c["name"], "reply": reply, "handed_off": handed, "missing_critical": missing, "plan": s.plan}
+    return {"speaker": c["name"], "reply": reply, "handed_off": handed, "unclear": vote["unclear"],
+            "judges": vote["judges"], "missing_critical": missing, "plan": s.plan, "pharmacist": pharm}
+
+
+# ======================= Pharmacist: independent safety net =======================
+def pharmacist_review(s: Session, handed: List[str]) -> Optional[dict]:
+    """The pharmacist never sees the handoff. She reads the chart and does her own med check.
+    Code decides what she catches: rising creatinine + no NSAID plan -> she asks Walter about pain pills."""
+    p = s.case.get("pharmacist", {"name": "Pharmacist"})
+    caught = []
+    labs_flag = "creatinine" in s.discovered
+    if labs_flag and "ibuprofen" not in handed:
+        caught.append("ibuprofen")
+        if "ibuprofen" not in s.discovered:
+            s.discovered["ibuprofen"] = {"encounter": "handoff", "turn": s.turn, "how": "pharmacist"}
+        if not any(x["id"] == "stop_ibuprofen" for x in s.plan):
+            pt = next(x for x in s.case["plan"]["conditional"] if x["id"] == "stop_ibuprofen")
+            s.plan.append(dict(pt, source="pharmacist"))
+    walter_said = s.fact("ibuprofen")["says"] if caught else None
+    note = llm.claude_text(
+        f"You are {p['name']}, the inpatient pharmacist. {p.get('persona', '')}\n"
+        f"Chart: {[s.fact(i)['label'] for i in s.discovered if s.fact(i)['tier'] == 'chart']}\n"
+        f"Current discharge plan: {[x['point'] for x in s.plan]}\n"
+        + (f"You noticed the creatinine rise, asked Walter about over-the-counter pain pills, and he said: \"{walter_said}\". "
+           "You added: stop ibuprofen, use acetaminophen.\n" if caught else
+           "Your med review found nothing new to add.\n")
+        + "Write a 2-3 sentence note to the team, the way a pharmacist pages a resident. Plain and specific.",
+        temperature=0.5)
+    if not note:
+        note = ("Creatinine went from 1.2 to 1.6, so I checked his OTC meds. He takes ibuprofen most days for his knee. "
+                "Added to the plan: stop ibuprofen, acetaminophen instead.") if caught else "Med review done. Nothing to add."
+    return {"name": p["name"], "note": note, "caught": caught}
 
 
 # ======================= Discharge teaching with Ayşe =======================
@@ -276,8 +328,44 @@ def judge_points(s: Session, text: str) -> Dict[str, dict]:
 
 def interpret(text: str) -> str:
     out = llm.ask_text("Translate into natural, everyday Turkish as a medical interpreter would say it aloud. "
-                       "Keep any medical jargon as-is (do not explain it). Output only the Turkish.\n\n" + text, 0.2)
+                       "Keep any medical jargon as-is (do not explain it). Keep every number and unit exactly as said. "
+                       "Output only the Turkish.\n\n" + text, 0.2)
     return out or f"[Türkçe çeviri] {text}"
+
+
+NUM_WORDS = {"one": "1", "two": "2", "three": "3", "four": "4", "five": "5", "six": "6", "seven": "7",
+             "eight": "8", "nine": "9", "ten": "10", "twice": "2", "once": "1"}
+
+
+def numbers(text: str) -> set:
+    low = text.lower()
+    found = set(re.findall(r"\d+(?:[.,]\d+)?", low))
+    found |= {v for k, v in NUM_WORDS.items() if re.search(rf"\b{k}\b", low)}
+    return {n.replace(",", ".") for n in found}
+
+
+def check_translation(original: str, turkish: str) -> dict:
+    """Claude translates the Turkish back to English WITHOUT seeing the original.
+    Then two checks: code compares the numbers, Claude compares the meaning. Code decides."""
+    back = llm.claude_text("Translate this Turkish into plain English, literally. Output only the translation.\n\n" + turkish,
+                           system="You are a professional Turkish-English medical translator.")
+    if not back:
+        return {"status": "unchecked", "back_translation": None, "issues": [],
+                "why": "The back-translation checker is offline, so this translation was not verified."}
+    issues = []
+    lost_nums = numbers(original) - numbers(back)
+    added_nums = numbers(back) - numbers(original)
+    if lost_nums or added_nums:
+        issues.append(f"Numbers changed: said {sorted(numbers(original))}, Ayşe heard {sorted(numbers(back))}")
+    verdict = llm.claude_json(
+        "A doctor said A. An interpreter translated it to Turkish; B is that Turkish translated back to English.\n"
+        f"A: {original}\nB: {back}\n"
+        "Did any instruction change, drop out, or get added (doses, timing, units, what to stop or start)? "
+        "Ignore wording differences. Return {\"same_meaning\": bool, \"changes\": [short strings]}.")
+    if isinstance(verdict, dict) and not verdict.get("same_meaning", True):
+        issues += [str(c) for c in verdict.get("changes", [])][:3]
+    return {"status": "flagged" if issues else "ok", "back_translation": back, "issues": issues,
+            "why": "Two checks: numbers match in code, meaning compared by a second model."}
 
 
 def discharge_chat(s: Session, text: str) -> dict:
@@ -285,8 +373,11 @@ def discharge_chat(s: Session, text: str) -> dict:
         raise ValueError("Finish the handoff first.")
     s.turn += 1
     tr = interpret(text)
-    s.log("student", text, text_tr=tr)
+    check = check_translation(text, tr)
+    s.log("student", text, text_tr=tr, translation_check=check)
     judged = judge_points(s, text)
+    if check["status"] == "flagged":   # Ayşe heard something different, so nothing from this message counts as clear
+        judged = {pid: dict(j, specific=False) for pid, j in judged.items()}
     for pid, j in judged.items():
         prev = s.points.get(pid, {"covered": False, "clear": False, "jargon": []})
         clear = j["specific"] and not j["jargon"]
@@ -304,8 +395,8 @@ def discharge_chat(s: Session, text: str) -> dict:
         out = {"tr": "Anladım, teşekkür ederim." if not confusing else f"Affedersiniz, '{confusing[0]}' ne demek?",
                "en": "I understand, thank you." if not confusing else f"Excuse me, what does '{confusing[0]}' mean?"}
     s.log("caregiver", out.get("tr", ""), text_en=out.get("en", ""))
-    return {"speaker": cg["name"], "interpreted_tr": tr, "reply_tr": out.get("tr", ""), "reply_en": out.get("en", ""),
-            "points": progress(s)}
+    return {"speaker": cg["name"], "interpreted_tr": tr, "translation_check": check,
+            "reply_tr": out.get("tr", ""), "reply_en": out.get("en", ""), "points": progress(s)}
 
 
 def progress(s: Session) -> List[dict]:
@@ -347,14 +438,19 @@ def feedback(s: Session) -> dict:
             continue
         found = s.discovered.get(f["id"])
         plan_pt = cond.get(f["id"])
+        rescued = f["id"] in (((s.handoff or {}).get("pharmacist") or {}).get("caught") or [])
+        in_ed = bool(found) and found["how"] != "pharmacist"
         steps = [
-            {"stage": "ed", "ok": bool(found), "note": f"Found on turn {found['turn']}" if found else "Never asked about"},
-            {"stage": "handoff", "ok": f["id"] in handed, "note": "In the SBAR" if f["id"] in handed else "Not handed off"},
+            {"stage": "ed", "ok": in_ed, "note": f"Found on turn {found['turn']}" if in_ed else "Never asked about"},
+            {"stage": "handoff", "ok": f["id"] in handed or rescued,
+             "note": "Pharmacist caught it from the kidney labs" if rescued else ("In the SBAR" if f["id"] in handed else "Not handed off")},
             {"stage": "discharge", "ok": bool(plan_pt and plan_pt["id"] in understood),
              "note": "Ayşe understood it" if plan_pt and plan_pt["id"] in understood else "Did not make it home"},
         ]
-        lost_at = next((st["stage"] for st in steps if not st["ok"]), None)
+        check = steps[1:] if rescued else steps
+        lost_at = next((st["stage"] for st in check if not st["ok"]), None)
         threads.append({"id": f["id"], "label": f["label"], "steps": steps, "lost_at": lost_at,
+                        "rescued_by": "pharmacist" if rescued else None,
                         "consequence": None if lost_at is None else s.case["plan"]["missed_consequence"].get(f["id"])})
     base_ids = [p["id"] for p in s.case["plan"]["base"]]
     return {
@@ -366,5 +462,7 @@ def feedback(s: Session) -> dict:
         "standard_points_understood": sum(1 for i in base_ids if i in understood),
         "standard_points_total": len(base_ids),
         "jargon_used": sorted({w for p in s.points.values() for w in p.get("jargon", [])}),
+        "translation_flags": [{"said": t["text"], **t["translation_check"]} for t in s.transcript
+                              if t.get("translation_check", {}).get("status") == "flagged"],
         "teachback": s.teachback,
     }
