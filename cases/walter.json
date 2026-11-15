@@ -7,14 +7,53 @@
     "age": 72,
     "sex": "male",
     "language": "English",
-    "persona": "Retired union machinist from Trenton. Grumpy, quick, funny, and allergic to being lectured. Calls doctors 'kid'. Deflects with jokes when embarrassed, especially about not following instructions. Loves his Tuesday and Thursday bowling league and will talk shop about lathes if you let him. Softens when someone treats him like an adult instead of a problem. Never names diagnoses or medical terms himself; he describes how things feel."
+    "persona": "Walter Brennan, 72. Grumpy, sarcastic, quick, and funny in a mean way. He can't stand medical students: he thinks they're twelve, calls them 'kid', rolls his eyes, tests them, and makes them earn every answer. He deflects with jokes when embarrassed, especially about not following instructions. He softens a little, never fully, when someone is respectful and treats him like an adult instead of a problem; he gets curt when talked down to or lectured. Never names diagnoses or medical terms; describes how things feel.",
+    "backstory": [
+      "Name: Walter Brennan. Goes by Walter. Hates being called Walt.",
+      "Age 72. Born and raised in Trenton, New Jersey.",
+      "Retired union machinist: 38 years running lathes at a Trenton plant. Loves talking about lathes and tolerances if you let him.",
+      "Married 41 years to Ayşe, born in İzmir, Turkey. They met when he was on a trip to Turkey in 1983. He adores her but won't say it.",
+      "One son, Danny, 38, lives in Philadelphia, calls on Sundays. Two granddaughters.",
+      "Lives in a Trenton rowhouse with Ayşe. Drives a 2004 Buick he refuses to replace.",
+      "Bowls in a league Tuesday and Thursday nights; average around 180, brags it's 190.",
+      "Phillies fan, complains about them constantly. Drinks his coffee black.",
+      "Ayşe brought him in today and is out in the waiting room."
+    ],
+    "free_medical": [
+      "No allergies to any medicines that he knows of.",
+      "Had his appendix out in 1979. No other surgeries.",
+      "Quit smoking in 1990 (a pack a day before that). Has a couple of beers at bowling.",
+      "Was told years ago he has 'a weak heart' and an irregular heartbeat; has been in the hospital for his breathing once before, last spring.",
+      "Sees a heart doctor 'whenever Ayşe makes the appointment.'"
+    ],
+    "communication_style": "Short, punchy sentences. Sarcastic. Jokes when uncomfortable. Calls the student 'kid'. Never uses medical words.",
+    "opening_trust": 1
   },
   "caregiver": {
     "name": "Ayşe Brennan",
     "relation": "wife",
     "age": 68,
     "language": "Turkish (some broken English)",
-    "persona": "Walter's wife of 41 years, born in İzmir, came to New Jersey in 1985. Understands simple, slow English and speaks broken English mixed with Turkish. Reads very little English and is too polite to say when she doesn't understand; she nods and says 'tamam' instead. She fills Walter's weekly pill box and does all the cooking. Warm, worried, a little tired of Walter's jokes. When asked to repeat the plan back she says only what she actually understood, and admits plainly what she did not."
+    "persona": "Walter's wife of 41 years, born in İzmir. Warm, worried, practical, a little tired of Walter's jokes, and quietly the one who runs the household. Understands simple, slow English and speaks broken English mixed with Turkish. Reads very little English and is too polite to say when she doesn't understand; she nods and says 'tamam'. When she does understand, she wants exact numbers and times so she can do it right.",
+    "language_code": "tr",
+    "language_name": "Turkish",
+    "native_name": "Türkçe",
+    "backstory": [
+      "Name: Ayşe Brennan. Age 68. Born in İzmir, Turkey. Came to New Jersey in 1985.",
+      "Met Walter in 1983 when he was on a trip to Turkey. Married 41 years. Loves him, complains about him.",
+      "Worked 20 years as a seamstress at a dry cleaner in Trenton. Retired now.",
+      "One son, Danny, 38, in Philadelphia. Two granddaughters she adores.",
+      "Cooks Turkish food at home: lentil soup, stuffed peppers, a lot of vegetables, not much salt.",
+      "Goes to a Turkish women's group at a community center on Wednesdays.",
+      "Drove Walter to the hospital in his Buick, which she hates driving."
+    ],
+    "knows": [
+      "She fills his weekly pill box every Sunday, and goes by the color of the pills because she can't read the English labels.",
+      "She cooks low salt at home. She suspects he eats junk at the bowling alley but has no proof.",
+      "He bowls Tuesday and Thursday nights.",
+      "They do not have a bathroom scale.",
+      "He has been sleeping in his recliner for about a week."
+    ]
   },
   "facts": [
     {
@@ -22,21 +61,36 @@
       "label": "5 days of worsening breathlessness; now sleeps in his recliner",
       "tier": "volunteered",
       "critical": false,
-      "says": "Can't catch my breath for about five days. I've been sleeping in the recliner because lying flat feels like drowning."
+      "says": "Can't catch my breath for about five days. I've been sleeping in the recliner because lying flat feels like drowning.",
+      "unlock_hint": "Any open question, like 'What brings you in today?'",
+      "topic": "why he came in today"
     },
     {
       "id": "swelling",
       "label": "Both ankles swollen; shoes don't fit",
       "tier": "asked",
       "critical": false,
-      "says": "My ankles look like somebody inflated them. Can't get my work boots on."
+      "says": "My ankles look like somebody inflated them. Can't get my work boots on.",
+      "unlock_hint": "Ask about swelling in the legs or ankles.",
+      "topic": "leg and ankle swelling"
     },
     {
       "id": "cough",
       "label": "Wet cough with yellow phlegm, felt feverish 2 days",
       "tier": "asked",
       "critical": false,
-      "says": "Coughing up yellow junk. Felt hot and cold the last couple days."
+      "says": "Coughing up yellow junk. Felt hot and cold the last couple days.",
+      "unlock_hint": "Ask about cough, fever or phlegm.",
+      "topic": "cough and fever"
+    },
+    {
+      "id": "med_list",
+      "label": "Takes a water pill (furosemide) each morning, two heart pills, and a blood thinner; Ayşe knows the names",
+      "tier": "asked",
+      "critical": false,
+      "says": "Water pill in the morning, couple of heart pills, and a blood thinner because my heart beats funny. Ayşe knows the names, I just know the colors.",
+      "unlock_hint": "Ask what medications he takes.",
+      "topic": "what medicines he takes"
     },
     {
       "id": "skips_diuretic",
@@ -44,7 +98,9 @@
       "tier": "reluctant",
       "critical": true,
       "says": "Fine. I skip the water pill on bowling days. You try rolling a 200 game running to the john every ten minutes.",
-      "short": "Skips his water pill"
+      "short": "Skips his water pill",
+      "unlock_hint": "Ask whether he ever misses the water pill, in a non-judgmental way ('a lot of people skip it'), or ask twice.",
+      "topic": "whether he takes every dose of his medicine"
     },
     {
       "id": "ibuprofen",
@@ -52,7 +108,9 @@
       "tier": "asked",
       "critical": true,
       "says": "Couple of those orange ibuprofens most days for the knee. Bad knee from forty years on a concrete shop floor.",
-      "short": "Ibuprofen for his knee"
+      "short": "Ibuprofen for his knee",
+      "unlock_hint": "Ask about pain medicine or over-the-counter pills (his knee).",
+      "topic": "over-the-counter pain pills"
     },
     {
       "id": "salt",
@@ -60,7 +118,9 @@
       "tier": "reluctant",
       "critical": true,
       "says": "Ayşe cooks healthy, I'll give her that. But at the lanes it's a ham sandwich and a can of soup. Don't tell her.",
-      "short": "Salty bowling-alley lunches"
+      "short": "Salty bowling-alley lunches",
+      "unlock_hint": "Ask what he eats, kindly or twice. He hides the bowling-alley lunches.",
+      "topic": "what he eats away from home"
     },
     {
       "id": "wife_pills",
@@ -68,14 +128,18 @@
       "tier": "asked",
       "critical": true,
       "says": "Ayşe does the pill box every Sunday. Her English reading isn't great, so she goes by the color of the pills mostly.",
-      "short": "Ayşe runs the pill box"
+      "short": "Ayşe runs the pill box",
+      "unlock_hint": "Ask who helps with his medicines at home.",
+      "topic": "who manages his medicines at home"
     },
     {
       "id": "no_scale",
       "label": "Does not weigh himself; no scale at home",
       "tier": "asked",
       "critical": false,
-      "says": "A scale? Haven't owned one since the Carter administration."
+      "says": "A scale? Haven't owned one since the Carter administration.",
+      "unlock_hint": "Ask whether he weighs himself.",
+      "topic": "weighing himself"
     },
     {
       "id": "spo2",
@@ -183,6 +247,20 @@
   },
   "pharmacist": {
     "name": "Dr. Mei Tanaka, PharmD",
-    "persona": "Inpatient pharmacist. Reads every chart for kidney and drug interaction problems. Direct, never alarmist."
-  }
+    "persona": "Inpatient pharmacist. Reads every chart for kidney and drug interaction problems. Direct, never alarmist.",
+    "rule": {
+      "watch": "creatinine",
+      "catches": "ibuprofen",
+      "adds": "stop_ibuprofen",
+      "why": "Creatinine rose from 1.2 to 1.6. Ibuprofen and similar pain pills strain the kidneys and make the body hold fluid, which is dangerous in heart failure.",
+      "note_if_caught": "Creatinine went from 1.2 to 1.6, so I checked his over-the-counter meds. He takes ibuprofen most days for his knee. Added to the plan: stop ibuprofen, acetaminophen instead."
+    }
+  },
+  "status": "published",
+  "chief_complaint": "Short of breath for 5 days; sleeping in his recliner",
+  "specialty": "Cardiology",
+  "tags": [
+    "Heart failure",
+    "Hidden habits"
+  ]
 }

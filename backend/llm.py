@@ -6,6 +6,7 @@ Every call returns None when its provider is unavailable, so the app never hard-
 import json
 import os
 import re
+import time
 from typing import Any, Optional
 
 import httpx
@@ -16,7 +17,7 @@ try:
 except Exception:
     pass
 
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-haiku-5-5")
 _gemini = None
 
@@ -36,61 +37,137 @@ def gemini():
     if _gemini is None and os.getenv("GEMINI_API_KEY"):
         try:
             from google import genai
-            _gemini = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+            from google.genai import types as _types
+            _gemini = genai.Client(api_key=os.getenv("GEMINI_API_KEY"),
+                                   http_options=_types.HttpOptions(timeout=60_000))   # ms: no call hangs forever
         except Exception:
             _gemini = None
     return _gemini
 
 
-def ask_json(prompt: str, temperature: float = 0.2) -> Optional[Any]:
+_THINK = "unknown"   # which "think less" setting this model accepts: "level", "budget", or None
+
+
+def thinking():
+    """Newer Gemini models think before answering, which makes every call slow. Ask for minimal thinking.
+    Probed once with a tiny call: try thinking_level=low, then thinking_budget=0, else the model default."""
+    global _THINK
+    if _THINK != "unknown":
+        return _THINK
     c = gemini()
     if c is None:
         return None
+    from google.genai import types
+    for mode, cfg in (("level", types.ThinkingConfig(thinking_level="low")), ("budget", types.ThinkingConfig(thinking_budget=0))):
+        try:
+            c.models.generate_content(model=GEMINI_MODEL, contents="Say ok.",
+                                      config=types.GenerateContentConfig(thinking_config=cfg, max_output_tokens=5,
+                                                                         http_options=types.HttpOptions(timeout=15_000)))
+            _THINK = mode
+            print(f"[gemini] fast mode: thinking_{mode}")
+            return _THINK
+        except Exception as e:
+            if "not found" in str(e).lower() or "404" in str(e):
+                break            # wrong model name: don't keep probing
+    _THINK = None
+    return _THINK
+
+
+def _cfg(timeout_s: Optional[float] = None, **kw):
+    from google.genai import types
+    if timeout_s:
+        kw["http_options"] = types.HttpOptions(timeout=int(timeout_s * 1000))
+    mode = thinking()
+    if mode == "level":
+        kw["thinking_config"] = types.ThinkingConfig(thinking_level="low")
+    elif mode == "budget":
+        kw["thinking_config"] = types.ThinkingConfig(thinking_budget=0)
+    return types.GenerateContentConfig(**kw)
+
+
+BACKUP_TIMEOUT = float(os.getenv("CLAUDE_BACKUP_SECONDS", "10"))
+LAST_PROVIDER = None   # "gemini" or "claude": who answered the last ask_* call
+
+
+def ask_json(prompt: str, temperature: float = 0.2, timeout_s: Optional[float] = None, tag: str = "json",
+             backup: bool = False) -> Optional[Any]:
+    global LAST_PROVIDER
+    out = _gemini_json(prompt, temperature, timeout_s, tag)
+    LAST_PROVIDER = "gemini" if out is not None else None
+    if out is None and backup:
+        out = claude_json(prompt, timeout_s=BACKUP_TIMEOUT, tag=tag + " (Claude backup)")
+        LAST_PROVIDER = "claude" if out is not None else None
+    return out
+
+
+def ask_text(prompt: str, temperature: float = 0.8, timeout_s: Optional[float] = None, tag: str = "text",
+             backup: bool = False) -> Optional[str]:
+    global LAST_PROVIDER
+    out = _gemini_text(prompt, temperature, timeout_s, tag)
+    LAST_PROVIDER = "gemini" if out is not None else None
+    if out is None and backup:
+        out = claude_text(prompt, system="Follow the instructions exactly. Output only what is asked for.",
+                          temperature=min(temperature, 1.0), timeout_s=BACKUP_TIMEOUT, tag=tag + " (Claude backup)")
+        LAST_PROVIDER = "claude" if out is not None else None
+    return out
+
+
+def _gemini_json(prompt: str, temperature: float = 0.2, timeout_s: Optional[float] = None, tag: str = "json") -> Optional[Any]:
+    c = gemini()
+    if c is None:
+        return None
+    t0 = time.time()
     try:
-        from google.genai import types
         r = c.models.generate_content(
             model=GEMINI_MODEL, contents=prompt,
-            config=types.GenerateContentConfig(response_mime_type="application/json", temperature=temperature))
+            config=_cfg(timeout_s, response_mime_type="application/json", temperature=temperature))
+        print(f"[gemini] {tag}: {time.time() - t0:.1f}s")
         return json.loads(r.text)
     except Exception as e:
-        print("[gemini]", type(e).__name__, e)
+        print(f"[gemini] {tag} failed after {time.time() - t0:.1f}s:", type(e).__name__, str(e)[:200])
         return None
 
 
-def ask_text(prompt: str, temperature: float = 0.8) -> Optional[str]:
+def _gemini_text(prompt: str, temperature: float = 0.8, timeout_s: Optional[float] = None, tag: str = "text") -> Optional[str]:
     c = gemini()
     if c is None:
         return None
+    t0 = time.time()
     try:
-        from google.genai import types
         r = c.models.generate_content(
-            model=GEMINI_MODEL, contents=prompt, config=types.GenerateContentConfig(temperature=temperature))
+            model=GEMINI_MODEL, contents=prompt, config=_cfg(timeout_s, temperature=temperature))
+        print(f"[gemini] {tag}: {time.time() - t0:.1f}s")
         return (r.text or "").strip() or None
     except Exception as e:
-        print("[gemini]", type(e).__name__, e)
+        print(f"[gemini] {tag} failed after {time.time() - t0:.1f}s:", type(e).__name__, str(e)[:200])
         return None
 
 
 # ---------------- Claude ----------------
-def claude_text(prompt: str, system: str = "", max_tokens: int = 800, temperature: float = 0.2) -> Optional[str]:
+def claude_text(prompt: str, system: str = "", max_tokens: int = 800, temperature: float = 0.2,
+                timeout_s: float = 60, tag: str = "") -> Optional[str]:
     key = os.getenv("ANTHROPIC_API_KEY")
     if not key:
         return None
+    t0 = time.time()
     try:
-        r = httpx.post("https://api.anthropic.com/v1/messages", timeout=60, headers={
+        r = httpx.post("https://api.anthropic.com/v1/messages", timeout=timeout_s, headers={
             "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-            json={"model": CLAUDE_MODEL, "max_tokens": max_tokens, "temperature": temperature,
+            json={"model": CLAUDE_MODEL, "max_tokens": max_tokens,
                   "system": system or "You are a careful clinical reviewer.",
                   "messages": [{"role": "user", "content": prompt}]})
         r.raise_for_status()
+        if tag:
+            print(f"[claude] {tag}: {time.time() - t0:.1f}s")
         return "".join(b.get("text", "") for b in r.json().get("content", [])).strip() or None
     except Exception as e:
-        print("[claude]", type(e).__name__, e)
+        body = getattr(getattr(e, "response", None), "text", "")
+        print(f"[claude] {tag or 'call'} failed after {time.time() - t0:.1f}s:", type(e).__name__, str(e)[:120], body[:300])
         return None
 
 
-def claude_json(prompt: str, system: str = "") -> Optional[Any]:
-    out = claude_text(prompt + "\n\nReply with JSON only, no prose.", system)
+def claude_json(prompt: str, system: str = "", timeout_s: float = 60, tag: str = "") -> Optional[Any]:
+    out = claude_text(prompt + "\n\nReply with JSON only, no prose.", system, timeout_s=timeout_s, tag=tag)
     return _parse_json(out) if out else None
 
 
